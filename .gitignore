@@ -16,6 +16,7 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -24,32 +25,39 @@ var/
 instance/
 .webassets-cache
 
+# SQLite database files
+*.sqlite
+*.db
+
+# Tailwind/Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
 # Environment variables
 .env
-.venv
-venv/
-ENV/
+.flaskenv
+.env.*
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# IDE
+# IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS generated files
+# OS specific files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Project specific
+app/static/css/main.css
+
+# Environment variables
+.venv
+venv/
+ENV/
+
+# IDE
 .cursorrules
 .cursor/ 
