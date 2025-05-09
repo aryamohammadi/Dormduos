@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 from app.models import Listing
 from app import db
-import openai
 import os
 import json
+import traceback
+import requests
 
 # Create a blueprint for chat routes
 chat_bp = Blueprint('chat', __name__, url_prefix='/chat')
@@ -27,59 +28,159 @@ def ask():
     listings = Listing.query.all()
     listings_data = [listing.to_dict() for listing in listings]
     
+    # Get the API key from Flask config
+    api_key = current_app.config.get('OPENAI_API_KEY')
+    
+    # Log API key status (masked for security)
+    if api_key:
+        masked_key = api_key[:4] + '...' + api_key[-4:] if len(api_key) > 8 else '****'
+        print(f"Using OpenAI API key: {masked_key}")
+    else:
+        print("No OpenAI API key found in Flask config")
+    
     # Don't proceed if no API key is configured
-    if not os.environ.get('OPENAI_API_KEY'):
+    if not api_key:
         return jsonify({
-            'message': 'ChatGPT integration is not configured. Please set the OPENAI_API_KEY environment variable.',
+            'message': 'ChatGPT integration is not configured. Please set the OPENAI_API_KEY in your .env file.',
             'listings': listings_data[:3]  # Return some default listings
         })
     
     try:
-        # Create the system message with context about our application
-        system_message = """
-        You are a helpful assistant for UCR HousingConnect, a platform that helps UCR students find 
-        off-campus housing. Your task is to understand what kind of housing the user is looking for
-        and match them with appropriate listings from our database.
+        # Always use the mock response for now to avoid API rate limiting
+        print("Using mock AI response due to API rate limiting")
+        # Prepare listing data for the mock response
+        safe_listings_data = []
+        for listing in listings_data:
+            # Create a simplified version with only necessary fields
+            safe_listing = {
+                'id': listing.get('id'),
+                'title': listing.get('title'),
+                'description': listing.get('description', ''),
+                'address': listing.get('address', ''),
+                'price': listing.get('price', 0),
+                'bedrooms': listing.get('bedrooms', 0),
+                'bathrooms': listing.get('bathrooms', 0),
+                'property_type': listing.get('property_type', ''),
+                'amenities': listing.get('amenities', [])
+            }
+            safe_listings_data.append(safe_listing)
         
-        Extract the following preferences from the user's query:
-        - Budget/price range
-        - Number of bedrooms
-        - Number of bathrooms
-        - Property type (house, apartment, room)
-        - Desired amenities
-        - Location preferences (near campus, specific neighborhood)
+        # Generate mock response
+        mock_response = generate_mock_response(user_message, safe_listings_data)
+        return jsonify({
+            'message': mock_response,
+            'listings': listings_data[:3] if listings_data else []
+        })
         
-        Then provide a helpful response that highlights 1-3 listings that best match their criteria.
+        # NOTE: The following code is temporarily commented out due to API rate limiting
+        # In a production environment, uncomment and use the OpenAI API
         """
+        # Create the system message with context about our application
+        system_message = "..."
         
         # Create the message for OpenAI
         messages = [
             {"role": "system", "content": system_message},
-            {"role": "user", "content": f"User query: {user_message}\n\nAvailable listings: {json.dumps(listings_data)}"}
+            {"role": "user", "content": f"User query: {user_message}\n\nAvailable listings: {json.dumps(safe_listings_data)}"}
         ]
         
-        # Call the OpenAI API
-        client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=500
+        # Use direct HTTP request to OpenAI API
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        payload = {
+            "model": "gpt-3.5-turbo",
+            "messages": messages,
+            "max_tokens": 500
+        }
+        
+        # Make the API request directly
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload
         )
         
-        # Extract the response text
-        assistant_message = response.choices[0].message.content
-        
-        # Find listings that match the criteria extracted by ChatGPT
-        # For now, we'll return a simple response with the top 3 listings
-        # In a more advanced implementation, this would use the extracted preferences to filter
-        return jsonify({
-            'message': assistant_message,
-            'listings': listings_data[:3] if listings_data else []
-        })
+        # Process the response
+        if response.status_code == 200:
+            response_data = response.json()
+            assistant_message = response_data['choices'][0]['message']['content']
+            
+            return jsonify({
+                'message': assistant_message,
+                'listings': listings_data[:3] if listings_data else []
+            })
+        """
     
     except Exception as e:
-        # Handle any errors from the API call
+        # Print full exception details for debugging
+        print(f"Error in chat endpoint: {str(e)}")
+        print(traceback.format_exc())
+        
+        # Handle any errors by returning a generic response
         return jsonify({
-            'message': f"I'm sorry, I couldn't process that request. Error: {str(e)}",
-            'listings': []
+            'message': f"I'm sorry, I couldn't process that request due to an error.",
+            'listings': listings_data[:3] if listings_data else []
         }), 500
+
+def generate_mock_response(query, listings):
+    """Generate a mock AI response for development purposes"""
+    # Extract some basic info from the query
+    bedrooms = 2
+    price = 1500
+    amenities = []
+    
+    if "1 bedroom" in query.lower() or "1-bedroom" in query.lower():
+        bedrooms = 1
+    elif "3 bedroom" in query.lower() or "3-bedroom" in query.lower():
+        bedrooms = 3
+    
+    if "$" in query:
+        try:
+            price_text = query.split("$")[1].split()[0]
+            if price_text.isdigit():
+                price = int(price_text)
+        except:
+            pass
+    
+    # Look for amenities
+    if "parking" in query.lower():
+        amenities.append("parking")
+    if "pet" in query.lower() or "dog" in query.lower() or "cat" in query.lower():
+        amenities.append("pet-friendly")
+    if "laundry" in query.lower() or "washer" in query.lower():
+        amenities.append("in-unit laundry")
+    
+    # Find matching listings
+    matching_listings = []
+    for listing in listings:
+        if listing.get('bedrooms') == bedrooms and listing.get('price') <= price * 1.2:
+            matching_listings.append(listing)
+    
+    # If no exact matches, include close matches
+    if not matching_listings and listings:
+        for listing in listings:
+            if abs(listing.get('bedrooms', 0) - bedrooms) <= 1 and listing.get('price', 0) <= price * 1.5:
+                matching_listings.append(listing)
+    
+    # Use the first 1-3 listings from either matching or all listings
+    highlighted_listings = matching_listings[:3] if matching_listings else listings[:3] if listings else []
+    
+    # Create a response
+    response = f"Based on your search for a {bedrooms}-bedroom housing with a budget of ${price}, "
+    
+    if highlighted_listings:
+        response += "I found some options that might interest you:\n\n"
+        for i, listing in enumerate(highlighted_listings, 1):
+            response += f"{i}. **{listing.get('title')}** - ${listing.get('price')} per month\n"
+            response += f"   {listing.get('bedrooms')} bed, {listing.get('bathrooms')} bath {listing.get('property_type')}\n"
+            response += f"   Located at: {listing.get('address')}\n"
+            if listing.get('description'):
+                response += f"   {listing.get('description')[:100]}...\n"
+            response += "\n"
+    else:
+        response += "I couldn't find exact matches for your criteria. Please try adjusting your search parameters or check back later for new listings."
+    
+    return response
