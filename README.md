@@ -138,7 +138,3 @@ For production deployment:
 2. Use a production WSGI server (e.g., Gunicorn)
 3. Configure a PostgreSQL database
 4. Set a secure SECRET_KEY
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
