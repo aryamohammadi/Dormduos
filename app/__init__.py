@@ -3,6 +3,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from dotenv import load_dotenv
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 # Load environment variables from .env file
 load_dotenv()
@@ -85,5 +88,16 @@ def create_app(test_config=None):
     # Create database tables within app context
     with app.app_context():
         db.create_all()
+    
+    # Download required NLTK data if not already available
+    try:
+        # Test if we can access NLTK data
+        stopwords.words('english')
+        word_tokenize("This is a test sentence.")
+    except LookupError:
+        # If not, download the required data
+        print("Downloading required NLTK data...")
+        nltk.download('punkt')
+        nltk.download('stopwords')
     
     return app

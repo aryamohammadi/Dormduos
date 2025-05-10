@@ -12,6 +12,22 @@ A lightweight web platform that connects UCR students with off-campus housing op
 - Admin dashboard for data management
 - Zillow API integration for real housing data
 - CSV import/export for batch listing management
+- Browse and filter housing listings based on price, size, amenities, etc.
+- View property locations on an interactive map with distances to UCR
+- Calculate walking and driving distances to UCR campus
+- Submit new housing listings through a simple form
+- Rule-based recommendation system to match your housing requirements
+- Responsive design that works on desktop and mobile devices
+
+## Rule-Based Matching System
+
+The platform uses a sophisticated rule-based matching system to help students find housing that meets their specific requirements:
+
+- **Natural Language Understanding**: The system can interpret natural language queries like "I need a 2-bedroom apartment near UCR under $2000 with parking and laundry"
+- **Preference Extraction**: Automatically extracts information about bedrooms, bathrooms, price ranges, property types, desired amenities, and proximity to campus
+- **Intelligent Scoring**: Each property is scored based on how well it matches your requirements
+- **Explanation**: For each recommendation, the system explains why it's a good match for your needs
+- **No API Keys Required**: The matching system works entirely locally without relying on external AI services
 
 ## Technology Stack
 
@@ -23,6 +39,8 @@ A lightweight web platform that connects UCR students with off-campus housing op
 - Frontend: Vanilla JavaScript with Fetch API
 - Map: Leaflet.js + OpenStreetMap
 - AI: OpenAI API with GPT-3.5
+- Maps: Google Maps API for visualization and distance calculations
+- Matching Engine: NLTK-based rule system with custom scoring algorithm
 
 ## Getting Started
 
