@@ -51,15 +51,6 @@ def create_app(test_config=None):
     db_path = os.path.abspath(os.path.join(app.instance_path, 'housing.sqlite'))
     print(f"Database path: {db_path}")
     
-    # Check if OpenAI API key is available
-    openai_key = os.environ.get('OPENAI_API_KEY')
-    if openai_key:
-        # Mask most of the key for security in logs
-        masked_key = openai_key[:4] + '...' + openai_key[-4:] if len(openai_key) > 8 else '****'
-        print(f"OpenAI API Key found: {masked_key}")
-    else:
-        print("WARNING: OpenAI API Key not found in environment variables")
-    
     # Set default configuration
     app.config.from_mapping(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
@@ -67,7 +58,7 @@ def create_app(test_config=None):
             'DATABASE_URL', 'sqlite:///' + db_path
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        OPENAI_API_KEY=openai_key
+        GOOGLE_MAPS_API_KEY=os.environ.get('GOOGLE_MAPS_API_KEY', '')
     )
     
     # Development-specific configuration
@@ -76,6 +67,13 @@ def create_app(test_config=None):
     
     # Print the database URI for debugging
     print(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
+    
+    # Print Google Maps configuration
+    if app.config.get('GOOGLE_MAPS_API_KEY'):
+        masked_key = app.config['GOOGLE_MAPS_API_KEY'][:4] + '...' + app.config['GOOGLE_MAPS_API_KEY'][-4:] if len(app.config['GOOGLE_MAPS_API_KEY']) > 8 else '****'
+        print(f"Google Maps API Key: {masked_key}")
+    else:
+        print("Google Maps API Key not found, maps functionality will not work")
     
     # Load the instance config, if it exists, when not testing
     if test_config is None:
@@ -91,15 +89,30 @@ def create_app(test_config=None):
     # Register blueprints
     from app.routes.home import home_bp
     from app.routes.listing import listing_bp
-    from app.routes.chat import chat_bp
     from app.routes.admin import admin_bp
     from app.routes.auth import auth_bp
     
     app.register_blueprint(home_bp)
     app.register_blueprint(listing_bp)
-    app.register_blueprint(chat_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
+    
+    # Register context processors
+    @app.context_processor
+    def inject_globals():
+        """Inject global variables into all templates"""
+        from datetime import datetime
+        
+        # Check if Google Maps API key is set, log warning if not
+        if not app.config.get('GOOGLE_MAPS_API_KEY'):
+            app.logger.warning("Google Maps API key not found in environment variables. Maps functionality will be limited.")
+        
+        return {
+            'now': datetime.utcnow(),
+            'config': {
+                'GOOGLE_MAPS_API_KEY': app.config.get('GOOGLE_MAPS_API_KEY', '')
+            }
+        }
     
     # A simple route to confirm the app is working
     @app.route('/ping')
@@ -108,7 +121,12 @@ def create_app(test_config=None):
     
     # Create database tables within app context
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            print("Database tables created successfully")
+        except Exception as e:
+            print(f"Error creating database tables: {e}")
+            print("Continuing without database initialization...")
     
     # Configure NLTK to use local data directory instead of downloading
     nltk_data_dir = os.path.expanduser('~/nltk_data')

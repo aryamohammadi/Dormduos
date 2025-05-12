@@ -19,14 +19,6 @@
     <!-- Tailwind CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     
-    <!-- Leaflet CSS and JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-          crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-            crossorigin=""></script>
-    
     <!-- AlpineJS for interactive components -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
@@ -56,9 +48,6 @@
                     </a>
                     <a href="{{ url_for('listing.new') }}" class="text-white hover:text-ucr-gold-300 py-2 transition-colors">
                         <i class="fas fa-plus-circle mr-1"></i> Submit Listing
-                    </a>
-                    <a href="{{ url_for('chat.chat_interface') }}" class="text-white hover:text-ucr-gold-300 py-2 transition-colors">
-                        <i class="fas fa-comments mr-1"></i> Housing Assistant
                     </a>
                     
                     {% if current_user %}
@@ -141,9 +130,6 @@
                 </a>
                 <a href="{{ url_for('listing.new') }}" class="flex items-center p-3 rounded-md hover:bg-ucr-blue-50 dark:hover:bg-ucr-blue-900 text-ucr-blue-700 dark:text-ucr-blue-200">
                     <i class="fas fa-plus-circle mr-2"></i> Submit Listing
-                </a>
-                <a href="{{ url_for('chat.chat_interface') }}" class="flex items-center p-3 rounded-md hover:bg-ucr-blue-50 dark:hover:bg-ucr-blue-900 text-ucr-blue-700 dark:text-ucr-blue-200">
-                    <i class="fas fa-comments mr-2"></i> Housing Assistant
                 </a>
                 
                 {% if current_user %}

@@ -121,10 +121,11 @@
         <!-- Map and Additional Info -->
         <div class="lg:col-span-1 space-y-6">
             <!-- Map Container -->
-            <div id="detail-map" class="map-container" 
+            <div id="map" class="map-container" 
                  data-lat="{{ listing.latitude }}" 
                  data-lng="{{ listing.longitude }}"
-                 data-title="{{ listing.title }}"></div>
+                 data-title="{{ listing.title }}"
+                 style="height: 400px;"></div>
             
             <!-- Distance Information -->
             <div class="distance-info">
@@ -166,90 +167,175 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Load Google Maps API -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initDetailMap" async defer></script>
+<!-- Google Maps Integration -->
 <script>
-    function initDetailMap() {
-        const detailMap = document.getElementById('detail-map');
-        const lat = parseFloat(detailMap.getAttribute('data-lat')) || 33.9737;
-        const lng = parseFloat(detailMap.getAttribute('data-lng')) || -117.3281;
-        const title = detailMap.getAttribute('data-title');
+    console.log("Detail page map initialization starting...");
+    
+    // UCR Campus coordinates
+    const UCR_CAMPUS = {
+        lat: 33.9737,
+        lng: -117.3281
+    };
+    
+    let map;
+    let directionsService;
+    let directionsRenderer;
+    
+    // Error handler for Google Maps
+    function gm_authFailure() {
+        console.error("Google Maps authentication failed - invalid API key");
+        alert("Google Maps API key is invalid or has restrictions that prevent it from loading.");
+    }
+    
+    // Initialize Google Maps
+    async function initMap() {
+        console.log("Initializing Google Maps for detail page...");
         
-        // Initialize the map
-        const map = new google.maps.Map(detailMap, {
-            center: { lat, lng },
-            zoom: 15,
-            styles: [
-                {
-                    featureType: "poi",
-                    elementType: "labels",
-                    stylers: [{ visibility: "off" }]
+        // Get property coordinates from data attributes
+        const mapElement = document.getElementById('map');
+        if (!mapElement) {
+            console.error("Map container element not found!");
+            return;
+        }
+        
+        const propertyLat = parseFloat(mapElement.getAttribute('data-lat'));
+        const propertyLng = parseFloat(mapElement.getAttribute('data-lng'));
+        const propertyTitle = mapElement.getAttribute('data-title');
+        
+        if (isNaN(propertyLat) || isNaN(propertyLng)) {
+            console.error("Invalid property coordinates");
+            return;
+        }
+        
+        const propertyPosition = { lat: propertyLat, lng: propertyLng };
+        
+        try {
+            // Initialize the map centered on the property
+            map = new google.maps.Map(mapElement, {
+                center: propertyPosition,
+                zoom: 14,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+            
+            // Add property marker
+            new google.maps.Marker({
+                position: propertyPosition,
+                map: map,
+                title: propertyTitle || 'Property'
+            });
+            
+            // Add UCR campus marker
+            new google.maps.Marker({
+                position: UCR_CAMPUS,
+                map: map,
+                title: 'UCR Campus',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: '#003DA5',
+                    fillOpacity: 1,
+                    strokeColor: '#FFD100',
+                    strokeWeight: 2
                 }
-            ]
-        });
-        
-        // Add property marker
-        const marker = new google.maps.Marker({
-            position: { lat, lng },
-            map: map,
-            title: title,
-            animation: google.maps.Animation.DROP
-        });
-        
-        // Add UCR campus marker
-        const ucrMarker = new google.maps.Marker({
-            position: { lat: 33.9737, lng: -117.3281 },
-            map: map,
-            title: 'UCR Campus',
-            icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: '#003DA5',
-                fillOpacity: 1,
-                strokeColor: '#FFD100',
-                strokeWeight: 2
-            }
-        });
-        
-        // Initialize directions service
-        const directionsService = new google.maps.DirectionsService();
-        
-        // Calculate distances
-        const calculateDistances = async () => {
-            // Calculate driving distance
-            const drivingRequest = {
-                origin: { lat, lng },
-                destination: { lat: 33.9737, lng: -117.3281 },
-                travelMode: google.maps.TravelMode.DRIVING
-            };
+            });
             
-            // Calculate walking distance
-            const walkingRequest = {
-                origin: { lat, lng },
-                destination: { lat: 33.9737, lng: -117.3281 },
-                travelMode: google.maps.TravelMode.WALKING
-            };
+            // Initialize directions service
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true
+            });
             
-            try {
-                const [drivingResult, walkingResult] = await Promise.all([
-                    directionsService.route(drivingRequest),
-                    directionsService.route(walkingRequest)
-                ]);
-                
-                document.getElementById('driving-distance').textContent = 
-                    `${drivingResult.routes[0].legs[0].distance.text} (${drivingResult.routes[0].legs[0].duration.text})`;
-                
-                document.getElementById('walking-distance').textContent = 
-                    `${walkingResult.routes[0].legs[0].distance.text} (${walkingResult.routes[0].legs[0].duration.text})`;
-            } catch (error) {
-                console.error('Error calculating distances:', error);
-                document.getElementById('driving-distance').textContent = 'Unable to calculate';
-                document.getElementById('walking-distance').textContent = 'Unable to calculate';
-            }
+            // Calculate route from property to UCR
+            calculateRouteToUCR(propertyLat, propertyLng);
+            
+            console.log("Detail page map initialized successfully");
+        } catch (error) {
+            console.error("Error initializing Google Maps:", error);
+        }
+    }
+    
+    // Calculate route from property to UCR
+    function calculateRouteToUCR(propertyLat, propertyLng) {
+        if (!directionsService) return;
+        
+        const request = {
+            origin: { lat: propertyLat, lng: propertyLng },
+            destination: UCR_CAMPUS,
+            travelMode: google.maps.TravelMode.DRIVING
         };
         
-        // Calculate distances when map is loaded
-        calculateDistances();
+        try {
+            directionsService.route(request, function(result, status) {
+                if (status === google.maps.DirectionsStatus.OK) {
+                    directionsRenderer.setDirections(result);
+                    
+                    // Get distance and time
+                    const route = result.routes[0].legs[0];
+                    const drivingDistanceElement = document.getElementById('driving-distance');
+                    if (drivingDistanceElement) {
+                        drivingDistanceElement.textContent = route.distance.text;
+                    }
+                    
+                    // Calculate walking distance too
+                    calculateWalkingDistance(propertyLat, propertyLng);
+                } else {
+                    console.error('Directions request failed due to ' + status);
+                    
+                    const drivingDistanceElement = document.getElementById('driving-distance');
+                    if (drivingDistanceElement) {
+                        drivingDistanceElement.textContent = 'Unable to calculate';
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error calculating directions:', error);
+        }
     }
+    
+    // Calculate walking distance
+    function calculateWalkingDistance(propertyLat, propertyLng) {
+        if (!directionsService) return;
+        
+        const request = {
+            origin: { lat: propertyLat, lng: propertyLng },
+            destination: UCR_CAMPUS,
+            travelMode: google.maps.TravelMode.WALKING
+        };
+        
+        try {
+            directionsService.route(request, function(result, status) {
+                if (status === google.maps.DirectionsStatus.OK) {
+                    // Get walking distance
+                    const route = result.routes[0].legs[0];
+                    const walkingDistanceElement = document.getElementById('walking-distance');
+                    if (walkingDistanceElement) {
+                        walkingDistanceElement.textContent = route.distance.text + ' (' + route.duration.text + ')';
+                    }
+                } else {
+                    console.error('Walking directions request failed due to ' + status);
+                    
+                    const walkingDistanceElement = document.getElementById('walking-distance');
+                    if (walkingDistanceElement) {
+                        walkingDistanceElement.textContent = 'Unable to calculate';
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error calculating walking directions:', error);
+        }
+    }
+    
+    // Make initMap available globally
+    window.initMap = initMap;
 </script>
+
+<!-- Load Google Maps API with the API key -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initMap" async defer></script>
 {% endblock %} 

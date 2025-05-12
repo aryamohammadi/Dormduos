@@ -274,27 +274,13 @@
     
     <!-- Main Content: Map and Listings -->
     <div id="main-content" class="flex flex-col lg:flex-row">
-        <!-- Map Container with View Controls -->
+        <!-- Map Container -->
         <div id="map-container" class="map-container lg:w-full lg:flex-1">
-            <!-- Map View Toggle -->
-            <div class="map-controls">
-                <div class="view-tabs">
-                    <button id="map-view" class="view-tab active">
-                        <i class="fas fa-map mr-1"></i> Map
-                    </button>
-                    <button id="satellite-view" class="view-tab">
-                        <i class="fas fa-satellite-dish mr-1"></i> Satellite
-                    </button>
-                </div>
-            </div>
+            <!-- Map status indicator (for debugging) -->
+            <div id="map-status" class="text-sm p-2 bg-yellow-100 text-yellow-800 hidden">Map status: Loading...</div>
             
-            <!-- Map Canvas -->
-            <div id="map" class="h-full w-full rounded-lg z-0"></div>
-            
-            <!-- Zoom to UCR Button -->
-            <button id="zoom-to-ucr" class="absolute bottom-4 left-4 z-800 bg-white/80 dark:bg-gray-800/80 rounded-md shadow-md px-3 py-2 text-sm font-medium text-ucr-blue-700 dark:text-ucr-blue-300 hover:bg-ucr-blue-50 dark:hover:bg-ucr-blue-900 transition-colors">
-                <i class="fas fa-university mr-1"></i> UCR Campus
-            </button>
+            <!-- Map Canvas - ensure it has a proper height -->
+            <div id="map" class="h-full w-full rounded-lg z-0" style="min-height: 400px; height: 400px;"></div>
         </div>
         
         <!-- Listings Panel -->
@@ -364,124 +350,88 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Load Google Maps API -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initMap" async defer></script>
-<script src="{{ url_for('static', filename='js/google-maps.js') }}"></script>
+<!-- Main Google Maps Script -->
 <script>
-    // Initialize map when Google Maps API is loaded
-    function initMap() {
-        window.googleMapsUtils.initMap();
+    console.log("Map initialization starting...");
+    
+    // UCR Campus coordinates
+    const UCR_CAMPUS = {
+        lat: 33.9737,
+        lng: -117.3281
+    };
+    
+    let map;
+    let markers = [];
+    
+    // Error handler for Google Maps
+    function gm_authFailure() {
+        console.error("Google Maps authentication failed - invalid API key");
+        alert("Google Maps API key is invalid or has restrictions that prevent it from loading.");
     }
-
-    // Load listings and add markers
-    async function loadListings(filters = {}) {
-        // Show loading indicator
-        listingsContainer.innerHTML = '<div class="loading-indicator"></div>';
-        allListingsView.innerHTML = '<div class="loading-indicator"></div>';
+    
+    // Initialize Google Maps
+    async function initMap() {
+        console.log("Initializing Google Maps...");
         
-        // Build query string from filters
-        const queryParams = new URLSearchParams();
-        if (filters.min_price) queryParams.append('min_price', filters.min_price);
-        if (filters.max_price) queryParams.append('max_price', filters.max_price);
-        if (filters.bedrooms) queryParams.append('bedrooms', filters.bedrooms);
-        if (filters.bathrooms) queryParams.append('bathrooms', filters.bathrooms);
-        if (filters.property_type) queryParams.append('property_type', filters.property_type);
-        if (filters.amenities) {
-            filters.amenities.forEach(id => queryParams.append('amenities', id));
+        // Find the map container
+        const mapElement = document.getElementById('map');
+        
+        if (!mapElement) {
+            console.error("Map container not found!");
+            return;
         }
         
         try {
-            // Fetch listings from API
-            const response = await fetch(`/api/listings?${queryParams.toString()}`);
-            const listings = await response.json();
-            
-            // Clear existing markers and listings
-            window.googleMapsUtils.clearMarkers();
-            listingsContainer.innerHTML = '';
-            allListingsView.innerHTML = '';
-            
-            // Update the count display
-            if (listingsCount) {
-                const countText = listings.length === 0 ? 'No listings found' : 
-                                listings.length === 1 ? '1 listing found' : 
-                                `${listings.length} listings found`;
-                listingsCount.innerHTML = `<i class="fas fa-list-ul text-ucr-blue-500 mr-1"></i> ${countText}`;
-            }
-            
-            // Display message if no listings found
-            if (listings.length === 0) {
-                const noListingsMsg = `
-                    <div class="bg-yellow-50 dark:bg-yellow-900/30 p-6 rounded-md text-center border border-yellow-200 dark:border-yellow-800">
-                        <div class="text-yellow-600 dark:text-yellow-400 text-4xl mb-3">
-                            <i class="fas fa-search"></i>
-                        </div>
-                        <p class="text-yellow-700 dark:text-yellow-300 font-medium">No listings found matching your criteria.</p>
-                        <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-1">Try adjusting your filters or check back later.</p>
-                    </div>
-                `;
-                
-                listingsContainer.innerHTML = noListingsMsg;
-                allListingsView.innerHTML = noListingsMsg;
-                return;
-            }
-            
-            // Process each listing
-            listings.forEach((listing, index) => {
-                // Create marker if coordinates exist
-                if (listing.latitude && listing.longitude) {
-                    window.googleMapsUtils.addPropertyMarker(listing);
-                }
-                
-                // Create listing card for map view
-                const listingCard = createListingCard(listing);
-                listingsContainer.appendChild(listingCard);
-                
-                // Create listing card for all listings view
-                const allListingCard = createListingCard(listing);
-                allListingsView.appendChild(allListingCard);
+            // Initialize the map centered on UCR
+            map = new google.maps.Map(mapElement, {
+                center: UCR_CAMPUS,
+                zoom: 13,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
             });
             
-            // Adjust map to show all markers
-            window.googleMapsUtils.fitMapToMarkers();
+            // Add UCR campus marker
+            new google.maps.Marker({
+                position: UCR_CAMPUS,
+                map: map,
+                title: 'UCR Campus',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: '#003DA5',
+                    fillOpacity: 1,
+                    strokeColor: '#FFD100',
+                    strokeWeight: 2
+                }
+            });
             
+            // Dispatch event to indicate map is ready
+            const mapReadyEvent = new Event('map_ready');
+            document.dispatchEvent(mapReadyEvent);
+            
+            console.log("Google Maps initialized successfully");
+            
+            // Initialize listings after map is ready
+            if (typeof initializeListings === 'function') {
+                initializeListings();
+            }
         } catch (error) {
-            console.error('Error loading listings:', error);
-            const errorMsg = `
-                <div class="bg-red-50 dark:bg-red-900/30 p-6 rounded-md text-center border border-red-200 dark:border-red-800">
-                    <div class="text-red-600 dark:text-red-400 text-4xl mb-3">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <p class="text-red-700 dark:text-red-300 font-medium">Failed to load listings.</p>
-                    <p class="text-sm text-red-600 dark:text-red-400 mt-1">Please try again later.</p>
-                </div>
-            `;
-            
-            listingsContainer.innerHTML = errorMsg;
-            allListingsView.innerHTML = errorMsg;
+            console.error("Error initializing Google Maps:", error);
         }
     }
-
-    // Handle filter form submission
-    if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Gather filter values
-            const filters = {
-                min_price: document.getElementById('min_price').value,
-                max_price: document.getElementById('max_price').value,
-                bedrooms: document.getElementById('bedrooms').value,
-                bathrooms: document.getElementById('bathrooms').value,
-                property_type: document.getElementById('property_type').value,
-                amenities: Array.from(document.querySelectorAll('input[name="amenities"]:checked')).map(el => el.value)
-            };
-            
-            // Load filtered listings
-            loadListings(filters);
-        });
-    }
-
-    // Load initial listings
-    loadListings();
+    
+    // Make initMap available globally
+    window.initMap = initMap;
 </script>
+
+<!-- Load Google Maps API with the API key -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initMap" async defer></script>
+
+<!-- Main page script -->
+<script src="{{ url_for('static', filename='js/listings.js') }}"></script>
 {% endblock %} 
