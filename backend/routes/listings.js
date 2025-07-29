@@ -1,0 +1,346 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const Listing = require('../models/Listing');
+const { authenticateToken } = require('../middleware/auth');
+
+const router = express.Router();
+
+// Input validation helper
+const validateStringInput = (value, fieldName) => {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} must be a string`);
+  }
+  return value.trim();
+};
+
+// GET /api/listings - Get all active listings (public)
+router.get('/', async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      minPrice, 
+      maxPrice, 
+      bedrooms, 
+      bathrooms,
+      amenities,
+      search 
+    } = req.query;
+
+    // Build filter object
+    const filter = { status: 'active' };
+
+    // Price filtering (with validation)
+    if (minPrice || maxPrice) {
+      const priceFilter = {};
+      let hasPriceFilter = false;
+      
+      if (minPrice) {
+        const minPriceNum = parseInt(minPrice);
+        if (!isNaN(minPriceNum) && minPriceNum >= 0) {
+          priceFilter.$gte = minPriceNum;
+          hasPriceFilter = true;
+        }
+      }
+      if (maxPrice) {
+        const maxPriceNum = parseInt(maxPrice);
+        if (!isNaN(maxPriceNum) && maxPriceNum >= 0) {
+          priceFilter.$lte = maxPriceNum;
+          hasPriceFilter = true;
+        }
+      }
+      
+      // Only add price filter if we have valid constraints
+      if (hasPriceFilter) {
+        filter.price = priceFilter;
+      }
+    }
+
+    // Room filtering (with validation)
+    if (bedrooms) {
+      const bedroomsNum = parseInt(bedrooms);
+      if (!isNaN(bedroomsNum) && bedroomsNum >= 0 && bedroomsNum <= 20) {
+        filter.bedrooms = bedroomsNum;
+      }
+    }
+    if (bathrooms) {
+      const bathroomsNum = parseFloat(bathrooms);
+      if (!isNaN(bathroomsNum) && bathroomsNum >= 0 && bathroomsNum <= 20) {
+        filter.bathrooms = bathroomsNum;
+      }
+    }
+
+    // Amenities filtering
+    if (amenities) {
+      const amenitiesArray = amenities.split(',').map(a => a.trim());
+      filter.amenities = { $in: amenitiesArray };
+    }
+
+    // Search in title and description (with validation)
+    if (search && typeof search === 'string' && search.trim().length > 0) {
+      // Sanitize search term to prevent regex injection
+      const sanitizedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Limit search term length
+      if (sanitizedSearch.length <= 100) {
+        filter.$or = [
+          { title: { $regex: sanitizedSearch, $options: 'i' } },
+          { description: { $regex: sanitizedSearch, $options: 'i' } },
+          { address: { $regex: sanitizedSearch, $options: 'i' } }
+        ];
+      }
+    }
+
+    // Execute query with pagination
+    const listings = await Listing.find(filter)
+      .populate('landlord', 'name email phone')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Get total count for pagination
+    const total = await Listing.countDocuments(filter);
+
+    res.json({
+      listings,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get listings error:', error);
+    res.status(500).json({ error: 'Server error while fetching listings' });
+  }
+});
+
+// GET /api/listings/my - Get current landlord's listings (protected)
+router.get('/my', authenticateToken, async (req, res) => {
+  try {
+    const listings = await Listing.findByLandlord(req.landlord._id);
+    
+    res.json({
+      listings,
+      total: listings.length
+    });
+
+  } catch (error) {
+    console.error('Get my listings error:', error);
+    res.status(500).json({ error: 'Server error while fetching your listings' });
+  }
+});
+
+// GET /api/listings/:id - Get single listing (public)
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid listing ID' });
+    }
+
+    const listing = await Listing.findById(id)
+      .populate('landlord', 'name email phone');
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    // Increment view count (don't await to avoid slowing response)
+    listing.incrementViews().catch(err => 
+      console.error('Error incrementing views:', err)
+    );
+
+    res.json({ listing });
+
+  } catch (error) {
+    console.error('Get single listing error:', error);
+    res.status(500).json({ error: 'Server error while fetching listing' });
+  }
+});
+
+// POST /api/listings - Create new listing (protected)
+router.post('/', authenticateToken, async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      price,
+      bedrooms,
+      bathrooms,
+      address,
+      distance_from_campus,
+      amenities,
+      lease_terms,
+      available_date,
+      contact_email,
+      contact_phone,
+      parking_type,
+      campus_proximity
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !price || bedrooms === undefined || bathrooms === undefined || !address) {
+      return res.status(400).json({
+        error: 'Missing required fields: title, description, price, bedrooms, bathrooms, address'
+      });
+    }
+
+    // Validate string inputs
+    try {
+      validateStringInput(title, 'Title');
+      validateStringInput(description, 'Description');
+      validateStringInput(address, 'Address');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    // Create new listing
+    const listing = new Listing({
+      title: title.trim(),
+      description: description.trim(),
+      price: parseFloat(price),
+      bedrooms: parseInt(bedrooms),
+      bathrooms: parseInt(bathrooms),
+      address: address.trim(),
+      distance_from_campus,
+      amenities: amenities || [],
+      lease_terms: lease_terms || [],
+      available_date: available_date ? new Date(available_date) : new Date(),
+      landlord: req.landlord._id,
+      contact_email: contact_email || req.landlord.email,
+      contact_phone: contact_phone || req.landlord.phone,
+      parking_type,
+      campus_proximity
+    });
+
+    await listing.save();
+
+    // Populate landlord info before sending response
+    await listing.populate('landlord', 'name email phone');
+
+    res.status(201).json({
+      message: 'Listing created successfully',
+      listing
+    });
+
+  } catch (error) {
+    console.error('Create listing error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+
+    res.status(500).json({ error: 'Server error while creating listing' });
+  }
+});
+
+// PUT /api/listings/:id - Update listing (protected + ownership check)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid listing ID' });
+    }
+
+    // Find listing and check ownership
+    const listing = await Listing.findById(id);
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (listing.landlord.toString() !== req.landlord._id.toString()) {
+      return res.status(403).json({ error: 'You can only update your own listings' });
+    }
+
+    // Update fields (only allow certain fields to be updated)
+    const allowedUpdates = [
+      'title', 'description', 'price', 'bedrooms', 'bathrooms', 
+      'address', 'distance_from_campus', 'amenities', 'lease_terms',
+      'available_date', 'contact_email', 'contact_phone', 
+      'parking_type', 'campus_proximity', 'status'
+    ];
+
+    const updates = {};
+    for (const field of allowedUpdates) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    // Validate string inputs if being updated
+    if (updates.title) {
+      updates.title = validateStringInput(updates.title, 'Title');
+    }
+    if (updates.description) {
+      updates.description = validateStringInput(updates.description, 'Description');
+    }
+    if (updates.address) {
+      updates.address = validateStringInput(updates.address, 'Address');
+    }
+
+    const updatedListing = await Listing.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    ).populate('landlord', 'name email phone');
+
+    res.json({
+      message: 'Listing updated successfully',
+      listing: updatedListing
+    });
+
+  } catch (error) {
+    console.error('Update listing error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+
+    res.status(500).json({ error: 'Server error while updating listing' });
+  }
+});
+
+// DELETE /api/listings/:id - Delete listing (protected + ownership check)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid listing ID' });
+    }
+
+    // Find listing and check ownership
+    const listing = await Listing.findById(id);
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (listing.landlord.toString() !== req.landlord._id.toString()) {
+      return res.status(403).json({ error: 'You can only delete your own listings' });
+    }
+
+    await Listing.findByIdAndDelete(id);
+
+    res.json({
+      message: 'Listing deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete listing error:', error);
+    res.status(500).json({ error: 'Server error while deleting listing' });
+  }
+});
+
+module.exports = router; 
