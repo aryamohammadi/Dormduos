@@ -27,24 +27,40 @@ router.get('/', async (req, res) => {
       search 
     } = req.query;
 
+    // Helper function to safely parse and validate numeric values
+    const safeParseNumber = (value, min = 0, max = 999999) => {
+      if (!value || typeof value === 'object' || Array.isArray(value)) return null;
+      const parsed = parseFloat(String(value).trim());
+      if (isNaN(parsed) || parsed < min || parsed > max) return null;
+      return parsed;
+    };
+
+    // Helper function to safely parse integer values
+    const safeParseInt = (value, min = 0, max = 100) => {
+      if (!value || typeof value === 'object' || Array.isArray(value)) return null;
+      const parsed = parseInt(String(value).trim(), 10);
+      if (isNaN(parsed) || parsed < min || parsed > max) return null;
+      return parsed;
+    };
+
     // Build filter object
     const filter = { status: 'active' };
 
-    // Price filtering (with validation)
+    // Price filtering (with enhanced validation)
     if (minPrice || maxPrice) {
       const priceFilter = {};
       let hasPriceFilter = false;
       
       if (minPrice) {
-        const minPriceNum = parseInt(minPrice);
-        if (!isNaN(minPriceNum) && minPriceNum >= 0) {
+        const minPriceNum = safeParseNumber(minPrice, 0, 50000);
+        if (minPriceNum !== null) {
           priceFilter.$gte = minPriceNum;
           hasPriceFilter = true;
         }
       }
       if (maxPrice) {
-        const maxPriceNum = parseInt(maxPrice);
-        if (!isNaN(maxPriceNum) && maxPriceNum >= 0) {
+        const maxPriceNum = safeParseNumber(maxPrice, 0, 50000);
+        if (maxPriceNum !== null) {
           priceFilter.$lte = maxPriceNum;
           hasPriceFilter = true;
         }
@@ -56,33 +72,39 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Room filtering (with validation)
+    // Room filtering (with enhanced validation)
     if (bedrooms) {
-      const bedroomsNum = parseInt(bedrooms);
-      if (!isNaN(bedroomsNum) && bedroomsNum >= 0 && bedroomsNum <= 20) {
+      const bedroomsNum = safeParseInt(bedrooms, 0, 20);
+      if (bedroomsNum !== null) {
         filter.bedrooms = bedroomsNum;
       }
     }
     if (bathrooms) {
-      const bathroomsNum = parseFloat(bathrooms);
-      if (!isNaN(bathroomsNum) && bathroomsNum >= 0 && bathroomsNum <= 20) {
+      const bathroomsNum = safeParseNumber(bathrooms, 0, 20);
+      if (bathroomsNum !== null) {
         filter.bathrooms = bathroomsNum;
       }
     }
 
-    // Amenities filtering
-    if (amenities) {
-      const amenitiesArray = amenities.split(',').map(a => a.trim());
-      filter.amenities = { $in: amenitiesArray };
+    // Amenities filtering (with validation)
+    if (amenities && typeof amenities === 'string' && amenities.trim().length > 0) {
+      const amenitiesArray = amenities.split(',')
+        .map(a => String(a).trim())
+        .filter(a => a.length > 0 && a.length <= 50)
+        .slice(0, 10); // Limit to 10 amenities max
+      
+      if (amenitiesArray.length > 0) {
+        filter.amenities = { $in: amenitiesArray };
+      }
     }
 
-    // Search in title and description (with validation)
+    // Search in title and description (with enhanced validation)
     if (search && typeof search === 'string' && search.trim().length > 0) {
       // Sanitize search term to prevent regex injection
-      const sanitizedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const sanitizedSearch = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       
       // Limit search term length
-      if (sanitizedSearch.length <= 100) {
+      if (sanitizedSearch.length > 0 && sanitizedSearch.length <= 100) {
         filter.$or = [
           { title: { $regex: sanitizedSearch, $options: 'i' } },
           { description: { $regex: sanitizedSearch, $options: 'i' } },
@@ -91,12 +113,16 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // Validate pagination parameters
+    const validPage = safeParseInt(page, 1, 1000) || 1;
+    const validLimit = safeParseInt(limit, 1, 100) || 20;
+
     // Execute query with pagination
     const listings = await Listing.find(filter)
       .populate('landlord', 'name email phone')
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(validLimit)
+      .skip((validPage - 1) * validLimit);
 
     // Get total count for pagination
     const total = await Listing.countDocuments(filter);
@@ -104,10 +130,10 @@ router.get('/', async (req, res) => {
     res.json({
       listings,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: validPage,
+        limit: validLimit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / validLimit)
       }
     });
 
