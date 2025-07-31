@@ -34,9 +34,9 @@ function Header() {
             </div>
             <div>
               <div className="text-xl font-bold text-blue-600">
-                UCR Housing
+                DormDuos
               </div>
-              <div className="text-xs text-gray-500 -mt-1">Community Listings</div>
+              <div className="text-xs text-gray-500 -mt-1">Find Housing & Roommates</div>
             </div>
           </Link>
 

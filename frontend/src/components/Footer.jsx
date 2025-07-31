@@ -13,10 +13,13 @@ function Footer() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </div>
-              <div className="text-xl font-bold">UCR Housing</div>
+              <div className="text-xl font-bold">DormDuos</div>
             </div>
             <p className="text-blue-200 max-w-2xl mx-auto">
-              A community platform for housing listings near UC Riverside. Users interact directly with property owners.
+              A housing and roommate platform for UC Riverside students. Find housing and connect with potential roommates.
+            </p>
+            <p className="text-sm text-gray-400 mt-2">
+              In partnership with <span className="text-blue-400 font-medium">HighlanderHousing</span>
             </p>
           </div>
 
@@ -39,7 +42,10 @@ function Footer() {
           {/* Copyright */}
           <div className="mt-8 pt-8 border-t border-white/10">
             <p className="text-sm text-gray-400">
-              © {new Date().getFullYear()} UCR Housing. A community platform for housing listings.
+              © {new Date().getFullYear()} DormDuos. A housing and roommate platform for UCR students.
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Roommate Search Feature Coming Soon ✨ | For roommate search now: <a href="https://discord.gg/gqCQDXz4rg" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 underline">Join Discord</a>
             </p>
           </div>
         </div>
