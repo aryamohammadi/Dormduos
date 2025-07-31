@@ -171,20 +171,30 @@ const createCorsMiddleware = () => {
     const allowedOrigins = [
       'http://localhost:5173', // Local development
       'http://localhost:3000', // Alternative local port
-      process.env.FRONTEND_URL // Production frontend URL
+      'https://dormduos.com',  // Production domain
+      'https://www.dormduos.com', // Production www domain
+      process.env.FRONTEND_URL // Dynamic frontend URL from env
     ].filter(Boolean);
     
     const origin = req.headers.origin;
+    const requestId = req.id || 'unknown';
+    
+    // Log CORS attempt for debugging
+    console.log(`[${requestId}] CORS check: origin="${origin}", allowed=[${allowedOrigins.join(', ')}]`);
     
     // Allow requests with no origin (like mobile apps, Postman, server-to-server)
     if (!origin) {
       res.setHeader('Access-Control-Allow-Origin', '*');
+      console.log(`[${requestId}] CORS: No origin header, allowing *`);
     } else if (allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
+      console.log(`[${requestId}] CORS: Origin allowed - ${origin}`);
     } else {
-      console.warn(`Blocked CORS request from unauthorized origin: ${origin}`);
+      console.warn(`[${requestId}] 🚫 CORS BLOCKED: Origin "${origin}" not in allowlist [${allowedOrigins.join(', ')}]`);
       return res.status(403).json({ 
         error: 'CORS: Origin not allowed',
+        origin: origin,
+        requestId: requestId,
         allowedOrigins: process.env.NODE_ENV === 'development' ? allowedOrigins : undefined
       });
     }
@@ -195,6 +205,7 @@ const createCorsMiddleware = () => {
     
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
+      console.log(`[${requestId}] CORS: Preflight request handled`);
       res.status(200).end();
       return;
     }

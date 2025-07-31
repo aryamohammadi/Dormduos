@@ -1,29 +1,42 @@
 const mongoose = require('mongoose');
+const { getConfig } = require('./environments');
 
 const connectDB = async () => {
   try {
-    // Use local MongoDB for dev, Railway for production
-    let mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing';
+    const envConfig = getConfig();
+    const mongoURI = envConfig.mongodb;
     
-    // If using Railway's internal URL and it fails, try the public URL
-    if (mongoURI.includes('mongodb.railway.internal')) {
-      const publicMongoURI = mongoURI.replace('mongodb.railway.internal', 'mongodb-production-c5d1.up.railway.app');
-      console.log('Trying Railway public MongoDB URL...');
-      mongoURI = publicMongoURI;
+    // Safety check: prevent development from accidentally hitting production
+    if (envConfig.isDevelopment && mongoURI.includes('mongodb.net')) {
+      throw new Error('🚨 SAFETY: Development environment cannot connect to cloud MongoDB. Use local MongoDB instead.');
     }
     
-    console.log('Connecting to MongoDB...', mongoURI.includes('localhost') ? 'localhost' : 'Railway');
+    // If using Railway's internal URL and it fails, try the public URL (production only)
+    let finalMongoURI = mongoURI;
+    if (mongoURI && mongoURI.includes('mongodb.railway.internal')) {
+      const publicMongoURI = mongoURI.replace('mongodb.railway.internal', 'mongodb-production-c5d1.up.railway.app');
+      console.log('Trying Railway public MongoDB URL...');
+      finalMongoURI = publicMongoURI;
+    }
     
-    const conn = await mongoose.connect(mongoURI, {
+    if (!finalMongoURI) {
+      throw new Error(`MongoDB URI not configured for environment: ${envConfig.environment}`);
+    }
+    
+    const dbName = finalMongoURI.includes('localhost') ? 'localhost' : 'cloud';
+    console.log(`Connecting to MongoDB... ${dbName} (${envConfig.environment})`);
+    
+    const conn = await mongoose.connect(finalMongoURI, {
       // Connection options for Railway and better reliability
-      serverSelectionTimeoutMS: 5000, // Reduce timeout for faster failure detection
+      serverSelectionTimeoutMS: envConfig.isDevelopment ? 2000 : 5000,
       connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      maxPoolSize: 10,
+      maxPoolSize: envConfig.isDevelopment ? 5 : 10,
       retryWrites: true,
     });
     
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.name} (${envConfig.environment})`);
     
     // Listen for connection issues
     mongoose.connection.on('error', (err) => {

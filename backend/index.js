@@ -25,6 +25,19 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Railway (required for secure cookies and proper IP detection)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+  console.log('🔒 Trust proxy enabled for Railway');
+}
+
+// Add request ID for tracing
+app.use((req, res, next) => {
+  req.id = Math.random().toString(36).substr(2, 9);
+  res.set('X-Request-ID', req.id);
+  next();
+});
+
 // Production security hardening
 app.use(securityHeaders);
 app.use(requestSizeLimit('10mb'));
@@ -41,6 +54,7 @@ app.use(express.json({
 // Handle when someone sends us malformed JSON
 app.use((error, req, res, next) => {
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    console.error(`[${req.id}] JSON parsing error:`, error.message);
     return res.status(400).json({ error: 'Invalid JSON format' });
   }
   next();
@@ -56,12 +70,21 @@ app.use('/api/listings', require('./routes/listings'));
 
 // Catch any errors that slip through
 app.use((error, req, res, next) => {
-  console.error('Global error:', error);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error(`[${req.id}] Global error:`, error);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    requestId: req.id 
+  });
 });
 
 // Actually start the server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Frontend should connect from http://localhost:5173`);
+  const environment = process.env.NODE_ENV || 'development';
+  const databaseType = process.env.MONGODB_URI ? 'Railway' : 'localhost';
+  
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log('📱 Frontend should connect from http://localhost:5173');
+  console.log('🌍 Environment:', environment);
+  console.log('💾 Database:', databaseType);
+  console.log('🔗 FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
 }); 
