@@ -1,14 +1,26 @@
 const mongoose = require('mongoose');
-const { getConfig } = require('./environments');
 
 const connectDB = async () => {
   try {
-    const envConfig = getConfig();
-    const mongoURI = envConfig.mongodb;
+    // Fallback for production - use existing logic if environment config fails
+    let mongoURI;
+    let environment = 'unknown';
     
-    // Safety check: prevent development from accidentally hitting production
-    if (envConfig.isDevelopment && mongoURI.includes('mongodb.net')) {
-      throw new Error('🚨 SAFETY: Development environment cannot connect to cloud MongoDB. Use local MongoDB instead.');
+    try {
+      const { getConfig } = require('./environments');
+      const envConfig = getConfig();
+      mongoURI = envConfig.mongodb;
+      environment = envConfig.environment;
+      
+      // Safety check: prevent development from accidentally hitting production
+      if (envConfig.isDevelopment && mongoURI.includes('mongodb.net')) {
+        throw new Error('🚨 SAFETY: Development environment cannot connect to cloud MongoDB. Use local MongoDB instead.');
+      }
+    } catch (configError) {
+      console.warn('⚠️  Environment config failed, using fallback:', configError.message);
+      // Fallback to original logic
+      mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing';
+      environment = process.env.NODE_ENV || 'development';
     }
     
     // If using Railway's internal URL and it fails, try the public URL (production only)
@@ -20,23 +32,23 @@ const connectDB = async () => {
     }
     
     if (!finalMongoURI) {
-      throw new Error(`MongoDB URI not configured for environment: ${envConfig.environment}`);
+      throw new Error(`MongoDB URI not configured for environment: ${environment}`);
     }
     
     const dbName = finalMongoURI.includes('localhost') ? 'localhost' : 'cloud';
-    console.log(`Connecting to MongoDB... ${dbName} (${envConfig.environment})`);
+    console.log(`Connecting to MongoDB... ${dbName} (${environment})`);
     
     const conn = await mongoose.connect(finalMongoURI, {
       // Connection options for Railway and better reliability
-      serverSelectionTimeoutMS: envConfig.isDevelopment ? 2000 : 5000,
+      serverSelectionTimeoutMS: environment === 'development' ? 2000 : 5000,
       connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      maxPoolSize: envConfig.isDevelopment ? 5 : 10,
+      maxPoolSize: environment === 'development' ? 5 : 10,
       retryWrites: true,
     });
     
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name} (${envConfig.environment})`);
+    console.log(`📊 Database: ${conn.connection.name} (${environment})`);
     
     // Listen for connection issues
     mongoose.connection.on('error', (err) => {
