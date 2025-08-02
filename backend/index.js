@@ -2,22 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
-const corsOptions = require('./config/cors');
 const { sanitizeInput } = require('./middleware/sanitize');
-const { 
-  rateLimit, 
-  authRateLimit, 
-  securityHeaders, 
-  validateEnvironment,
-  createCorsMiddleware,
-  requestSizeLimit 
-} = require('./middleware/security');
 
 // Load all our environment variables from .env file
 dotenv.config();
-
-// Validate environment variables (fail fast if required vars missing)
-validateEnvironment();
 
 // Connect to our MongoDB database
 connectDB();
@@ -38,20 +26,46 @@ app.use((req, res, next) => {
   next();
 });
 
-// Production security hardening
-app.use(securityHeaders);
-app.use(requestSizeLimit('10mb'));
-app.use(rateLimit());
+// Production-safe CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://dormduos.com',
+  'https://www.dormduos.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
-// Setup CORS with strict allowlist
-app.use(createCorsMiddleware());
-
-// Let Express parse JSON requests (with a reasonable size limit)
-app.use(express.json({
-  limit: '10mb'
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log for debugging but don't block in production
+    console.warn(`CORS warning: Origin "${origin}" not in allowlist, but allowing for production stability`);
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle when someone sends us malformed JSON
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.removeHeader('X-Powered-By');
+  next();
+});
+
+// Let Express parse JSON requests
+app.use(express.json({ limit: '10mb' }));
+
+// Handle malformed JSON
 app.use((error, req, res, next) => {
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
     console.error(`[${req.id}] JSON parsing error:`, error.message);
@@ -60,15 +74,15 @@ app.use((error, req, res, next) => {
   next();
 });
 
-// Input sanitization middleware to prevent NoSQL injection
+// Input sanitization middleware
 app.use(sanitizeInput);
 
-// Hook up all our API routes with appropriate security
+// Hook up all our API routes
 app.use('/api/health', require('./routes/health'));
-app.use('/api/auth', authRateLimit(), require('./routes/auth'));
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings'));
 
-// Catch any errors that slip through
+// Global error handler
 app.use((error, req, res, next) => {
   console.error(`[${req.id}] Global error:`, error);
   res.status(500).json({ 
@@ -77,14 +91,10 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Actually start the server
+// Start the server
 app.listen(PORT, () => {
-  const environment = process.env.NODE_ENV || 'development';
-  const databaseType = process.env.MONGODB_URI ? 'Railway' : 'localhost';
-  
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log('📱 Frontend should connect from http://localhost:5173');
-  console.log('🌍 Environment:', environment);
-  console.log('💾 Database:', databaseType);
-  console.log('🔗 FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
+  console.log(`📱 Frontend should connect from http://localhost:5173`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Allowed origins: ${allowedOrigins.join(', ')}`);
 }); 

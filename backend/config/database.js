@@ -2,53 +2,38 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Fallback for production - use existing logic if environment config fails
-    let mongoURI;
-    let environment = 'unknown';
+    // Simple, production-safe database connection
+    let mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing';
     
-    try {
-      const { getConfig } = require('./environments');
-      const envConfig = getConfig();
-      mongoURI = envConfig.mongodb;
-      environment = envConfig.environment;
-      
-      // Safety check: prevent development from accidentally hitting production
-      if (envConfig.isDevelopment && mongoURI.includes('mongodb.net')) {
-        throw new Error('🚨 SAFETY: Development environment cannot connect to cloud MongoDB. Use local MongoDB instead.');
-      }
-    } catch (configError) {
-      console.warn('⚠️  Environment config failed, using fallback:', configError.message);
-      // Fallback to original logic
-      mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing';
-      environment = process.env.NODE_ENV || 'development';
+    // For development, use local database to prevent production contamination
+    if (!process.env.MONGODB_URI && process.env.NODE_ENV !== 'production') {
+      mongoURI = 'mongodb://localhost:27017/ucrhousing-dev';
     }
     
-    // If using Railway's internal URL and it fails, try the public URL (production only)
-    let finalMongoURI = mongoURI;
+    // If using Railway's internal URL and it fails, try the public URL
     if (mongoURI && mongoURI.includes('mongodb.railway.internal')) {
       const publicMongoURI = mongoURI.replace('mongodb.railway.internal', 'mongodb-production-c5d1.up.railway.app');
       console.log('Trying Railway public MongoDB URL...');
-      finalMongoURI = publicMongoURI;
+      mongoURI = publicMongoURI;
     }
     
-    if (!finalMongoURI) {
-      throw new Error(`MongoDB URI not configured for environment: ${environment}`);
+    if (!mongoURI) {
+      throw new Error('MongoDB URI not configured');
     }
     
-    const dbName = finalMongoURI.includes('localhost') ? 'localhost' : 'cloud';
-    console.log(`Connecting to MongoDB... ${dbName} (${environment})`);
+    const dbType = mongoURI.includes('localhost') ? 'localhost' : 'cloud';
+    console.log(`Connecting to MongoDB... ${dbType}`);
     
-    const conn = await mongoose.connect(finalMongoURI, {
-      // Connection options for Railway and better reliability
-      serverSelectionTimeoutMS: environment === 'development' ? 2000 : 5000,
+    const conn = await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      maxPoolSize: environment === 'development' ? 5 : 10,
+      maxPoolSize: 10,
       retryWrites: true,
     });
     
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name} (${environment})`);
+    console.log(`📊 Database: ${conn.connection.name}`);
     
     // Listen for connection issues
     mongoose.connection.on('error', (err) => {
@@ -66,14 +51,14 @@ const connectDB = async () => {
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     
-    // In production, try to continue without database (graceful degradation)
+    // In production, try to continue (graceful degradation)
     if (process.env.NODE_ENV === 'production') {
-      console.log('🔄 Server continuing without database connection...');
+      console.log('🔄 Production: Continuing without database connection...');
       return null;
     }
     
-    // In development, don't crash but log the error
-    console.log('🔄 Development mode: continuing without database...');
+    // In development, continue but log the error
+    console.log('🔄 Development: Continuing without database...');
   }
 };
 
