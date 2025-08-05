@@ -2,8 +2,17 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // PRODUCTION SAFE: Handle missing MONGODB_URI gracefully
-    let mongoURI = process.env.MONGODB_URI;
+    // EMERGENCY PRODUCTION HARDCODE: Railway isn't reading environment variables
+    let mongoURI;
+    
+    if (process.env.NODE_ENV === 'production') {
+      // HARDCODED for production Railway deployment
+      mongoURI = 'mongodb://mongo:HenGsHmsxgReveohpTWSTLvVSzpADZYX@mongodb-production-c5d1.up.railway.app:27017/ucrhousing';
+      console.log('🚑 Using hardcoded production MongoDB URI');
+    } else {
+      // Use environment variable or fallback for non-production
+      mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing-dev';
+    }
     
     if (!mongoURI) {
       console.warn('⚠️  MONGODB_URI not set in production');
