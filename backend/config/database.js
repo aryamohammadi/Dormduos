@@ -2,12 +2,20 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Simple, production-safe database connection
-    let mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ucrhousing';
+    // PRODUCTION SAFE: Handle missing MONGODB_URI gracefully
+    let mongoURI = process.env.MONGODB_URI;
     
-    // For development, use local database to prevent production contamination
-    if (!process.env.MONGODB_URI && process.env.NODE_ENV !== 'production') {
-      mongoURI = 'mongodb://localhost:27017/ucrhousing-dev';
+    if (!mongoURI) {
+      console.warn('⚠️  MONGODB_URI not set in production');
+      
+      // Don't crash - try to connect to local MongoDB as fallback
+      if (process.env.NODE_ENV === 'production') {
+        console.error('❌ MONGODB_URI is required for production. Please set it in Railway.');
+        // Use a safe fallback that won't crash the app
+        mongoURI = 'mongodb://localhost:27017/ucrhousing-fallback';
+      } else {
+        mongoURI = 'mongodb://localhost:27017/ucrhousing-dev';
+      }
     }
     
     // If using Railway's internal URL and it fails, try the public URL
@@ -17,48 +25,29 @@ const connectDB = async () => {
       mongoURI = publicMongoURI;
     }
     
-    if (!mongoURI) {
-      throw new Error('MongoDB URI not configured');
-    }
-    
-    const dbType = mongoURI.includes('localhost') ? 'localhost' : 'cloud';
-    console.log(`Connecting to MongoDB... ${dbType}`);
+    const dbName = mongoURI.includes('localhost') ? 'localhost' : 'cloud';
+    console.log(`Connecting to MongoDB... ${dbName}`);
     
     const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-      retryWrites: true,
+      // Connection options for Railway and better reliability
+      serverSelectionTimeoutMS: 10000, // Increased timeout for Railway
+      maxPoolSize: 5 // Reduced pool size for Railway
     });
-    
+
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name}`);
-    
-    // Listen for connection issues
-    mongoose.connection.on('error', (err) => {
-      console.error('⚠️  MongoDB connection error:', err.message);
-    });
-    
-    mongoose.connection.on('disconnected', () => {
-      console.log('⚠️  MongoDB disconnected');
-    });
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('✅ MongoDB reconnected');
-    });
     
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     
-    // In production, try to continue (graceful degradation)
+    // PRODUCTION SAFE: Don't crash the entire app
     if (process.env.NODE_ENV === 'production') {
-      console.log('🔄 Production: Continuing without database connection...');
-      return null;
+      console.warn('⚠️  Production: MongoDB connection failed, but keeping app running');
+      return; // Don't exit in production
     }
     
-    // In development, continue but log the error
-    console.log('🔄 Development: Continuing without database...');
+    // In development, exit on DB connection failure
+    console.error('Exiting due to database connection failure...');
+    process.exit(1);
   }
 };
 
