@@ -1,60 +1,37 @@
-// Middleware to sanitize request body and prevent NoSQL injection
+// Basic input sanitization middleware
 const sanitizeInput = (req, res, next) => {
-  // List of dangerous MongoDB operators to remove
-  const dangerousOperators = [
-    '$where',
-    '$ne',
-    '$in',
-    '$nin',
-    '$gt',
-    '$gte',
-    '$lt',
-    '$lte',
-    '$exists',
-    '$regex',
-    '$options',
-    '$expr',
-    '$jsonSchema',
-    '$mod',
-    '$all',
-    '$size',
-    '$elemMatch',
-    '$slice'
-  ];
-
-  // Recursively sanitize object
-  const sanitizeObject = (obj) => {
+  // Simple function to clean potentially dangerous input
+  const cleanObject = (obj) => {
     if (typeof obj !== 'object' || obj === null) {
       return obj;
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(sanitizeObject);
+      return obj.map(cleanObject);
     }
 
-    const sanitized = {};
+    const cleaned = {};
     for (const [key, value] of Object.entries(obj)) {
-      // Remove dangerous operators
-      if (dangerousOperators.includes(key)) {
-        console.log(`🛡️  Blocked dangerous MongoDB operator: ${key}`);
-        continue; // Skip this key entirely
+      // Remove some dangerous MongoDB operators that students might encounter
+      if (key.startsWith('$')) {
+        console.log(`Removed potentially dangerous operator: ${key}`);
+        continue;
       }
 
-      // Recursively sanitize nested objects
-      sanitized[key] = sanitizeObject(value);
+      cleaned[key] = cleanObject(value);
     }
 
-    return sanitized;
+    return cleaned;
   };
 
-  // Sanitize request body
+  // Clean request body
   if (req.body && typeof req.body === 'object') {
-    req.body = sanitizeObject(req.body);
+    req.body = cleanObject(req.body);
   }
 
-  // Sanitize query parameters
+  // Clean query parameters
   if (req.query && typeof req.query === 'object') {
-    req.query = sanitizeObject(req.query);
+    req.query = cleanObject(req.query);
   }
 
   next();

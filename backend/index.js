@@ -4,97 +4,85 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/database');
 const { sanitizeInput } = require('./middleware/sanitize');
 
-// Load all our environment variables from .env file
+// Load environment variables
 dotenv.config();
 
-// Connect to our MongoDB database
+// Connect to database
 connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy for Railway (required for secure cookies and proper IP detection)
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-  console.log('🔒 Trust proxy enabled for Railway');
-}
-
-// Add request ID for tracing
-app.use((req, res, next) => {
-  req.id = Math.random().toString(36).substr(2, 9);
-  res.set('X-Request-ID', req.id);
-  next();
-});
-
-// Production-safe CORS configuration
+// Basic CORS setup
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://dormduos.com',
-  'https://www.dormduos.com',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+  'https://www.dormduos.com'
+];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, server-to-server)
+    // Allow requests with no origin (like mobile apps, Postman)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    // Log for debugging but don't block in production
-    console.warn(`CORS warning: Origin "${origin}" not in allowlist, but allowing for production stability`);
-    callback(null, true);
+    // Allow all origins in development for easier testing
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    console.log('CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Security headers
+// Basic security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.removeHeader('X-Powered-By');
   next();
 });
 
-// Let Express parse JSON requests
-app.use(express.json({ limit: '10mb' }));
+// Parse JSON requests
+app.use(express.json());
 
-// Handle malformed JSON
+// Basic JSON error handling
 app.use((error, req, res, next) => {
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-    console.error(`[${req.id}] JSON parsing error:`, error.message);
+    console.error('JSON parsing error:', error.message);
     return res.status(400).json({ error: 'Invalid JSON format' });
   }
   next();
 });
 
-// Input sanitization middleware
+// Input sanitization
 app.use(sanitizeInput);
 
-// Hook up all our API routes
+// API routes
 app.use('/api/health', require('./routes/health'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings'));
 
-// Global error handler
+// Basic error handler
 app.use((error, req, res, next) => {
-  console.error(`[${req.id}] Global error:`, error);
+  console.error('Server error:', error);
   res.status(500).json({ 
-    error: 'Internal server error',
-    requestId: req.id 
+    error: 'Internal server error'
   });
 });
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📱 Frontend should connect from http://localhost:5173`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Frontend should connect from http://localhost:5173`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
 }); 

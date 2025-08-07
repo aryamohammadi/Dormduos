@@ -2,31 +2,33 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Use environment variable - Railway will provide MONGODB_URI
+    // Get MongoDB URI from environment variables
     const mongoURI = process.env.MONGODB_URI;
     
     if (!mongoURI) {
-      throw new Error('MONGODB_URI environment variable is not set');
+      console.error('MONGODB_URI environment variable is not set');
+      return;
     }
     
-    console.log('Connecting to MongoDB... Railway');
+    console.log('Connecting to MongoDB...');
     
     const conn = await mongoose.connect(mongoURI, {
-      // Connection options optimized for Railway
+      // Basic connection options
       serverSelectionTimeoutMS: 10000,
       maxPoolSize: 5
     });
 
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name}`);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`Database: ${conn.connection.name}`);
 
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
-    // In production, keep the app running even if DB connection fails initially
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('⚠️  MongoDB connection failed, but keeping app running');
-    } else {
+    console.error('MongoDB connection failed:', error.message);
+    
+    // Exit in development, continue in production
+    if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
+    } else {
+      console.log('App continuing without database...');
     }
   }
 };

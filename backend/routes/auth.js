@@ -5,14 +5,12 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// EMERGENCY RAILWAY FIX: Hardcode regardless of environment
+// Get JWT secret - simple fallback for production
 const getJwtSecret = () => {
-  // HARDCODED for Railway (Railway might not have NODE_ENV=production)
-  console.log('🚑 Using hardcoded JWT_SECRET for Railway');
-  return '5ca2b60a803ac018f617bf748069e6f22abe6d2416a86fa0e19a4d31c6e4cc5613bc8156488d8c5612c0f47d62fc1782f32cca60d269b771b6076cc8fd9ff03c';
+  return process.env.JWT_SECRET || 'fallback-secret-key-for-development';
 };
 
-// Helper function to generate JWT token with safe error handling
+// Helper function to generate JWT token
 const generateToken = (landlordId) => {
   try {
     const secret = getJwtSecret();
@@ -20,12 +18,12 @@ const generateToken = (landlordId) => {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
   } catch (error) {
-    console.error('Token generation failed:', error);
-    throw new Error('Authentication token generation failed');
+    console.error('Error generating token:', error.message);
+    throw new Error('Failed to generate authentication token');
   }
 };
 
-// Input validation helper
+// Basic input validation helper
 const validateStringInput = (value, fieldName) => {
   if (typeof value !== 'string') {
     throw new Error(`${fieldName} must be a string`);
@@ -36,44 +34,44 @@ const validateStringInput = (value, fieldName) => {
 // POST /api/auth/register - Register new landlord
 router.post('/register', async (req, res) => {
   try {
-    console.log('🔐 Registration attempt:', { body: req.body });
+    console.log('Registration attempt:', { email: req.body.email });
     
     const { email, password, name, phone } = req.body;
     
-    // Validate input types and required fields
+    // Check required fields
     if (!email || !password) {
-      console.log('❌ Missing required fields');
+      console.log('Missing required fields');
       return res.status(400).json({
         error: 'Email and password are required fields'
       });
     }
     
-    // Validate that inputs are strings
+    // Basic input validation
     let validatedEmail, validatedPassword;
     try {
       validatedEmail = validateStringInput(email, 'Email');
       validatedPassword = validateStringInput(password, 'Password');
     } catch (validationError) {
-      console.log('❌ Input type validation failed:', validationError.message);
+      console.log('Input validation failed:', validationError.message);
       return res.status(400).json({
-        error: `Input type validation failed: ${validationError.message}`
+        error: `Input validation failed: ${validationError.message}`
       });
     }
     
-    console.log('✅ Required fields present and validated');
+    console.log('Basic validation passed');
     
-    // Check if landlord already exists
+    // Check if user already exists
     const existingLandlord = await Landlord.findOne({ email: validatedEmail });
     if (existingLandlord) {
-      console.log('❌ Landlord already exists:', validatedEmail);
+      console.log('User already exists:', validatedEmail);
       return res.status(400).json({
         error: 'An account with this email already exists'
       });
     }
     
-    console.log('✅ Email is available');
+    console.log('Email is available');
     
-    // Create new landlord
+    // Create new user
     const landlord = new Landlord({
       email: validatedEmail,
       password: validatedPassword,
@@ -81,46 +79,36 @@ router.post('/register', async (req, res) => {
       phone: phone && typeof phone === 'string' ? phone.trim() : undefined
     });
     
-    console.log('✅ Landlord object created, attempting to save...');
+    console.log('Saving new user...');
     
     await landlord.save();
     
-    console.log('✅ Landlord saved successfully:', landlord._id);
+    console.log('User saved successfully:', landlord._id);
     
-    // Generate JWT token
+    // Generate token
     const token = generateToken(landlord._id);
     
-    console.log('✅ JWT token generated');
+    console.log('Token generated');
     
     res.status(201).json({
       success: true,
-      message: 'Account created successfully',
+      message: 'Registration successful',
       token,
-      landlord
+      landlord: {
+        id: landlord._id,
+        email: landlord.email,
+        name: landlord.name
+      }
     });
     
   } catch (error) {
-    console.error('💥 Registration error details:', {
+    console.error('Registration error details:', {
       name: error.name,
       message: error.message,
       stack: error.stack,
       code: error.code
     });
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ error: `validation failed: ${errors.join(', ')}` });
-    }
-    
-    // Handle duplicate key error (email already exists)
-    if (error.code === 11000) {
-      return res.status(400).json({
-        error: 'An account with this email already exists'
-      });
-    }
-    
-    console.error('Registration error:', error);
+
     res.status(500).json({ error: 'Server error during registration' });
   }
 });
@@ -130,25 +118,25 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Validate required fields
+    // Check required fields
     if (!email || !password) {
       return res.status(400).json({
         error: 'Email and password are required fields'
       });
     }
     
-    // Validate that inputs are strings
+    // Basic input validation
     let validatedEmail, validatedPassword;
     try {
       validatedEmail = validateStringInput(email, 'Email');
       validatedPassword = validateStringInput(password, 'Password');
     } catch (validationError) {
       return res.status(400).json({
-        error: `Input type validation failed: ${validationError.message}`
+        error: `Input validation failed: ${validationError.message}`
       });
     }
     
-    // Find landlord by email
+    // Find user
     const landlord = await Landlord.findOne({ email: validatedEmail });
     if (!landlord) {
       return res.status(400).json({
@@ -163,7 +151,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Compare password
+    // Check password
     const isPasswordValid = await landlord.comparePassword(validatedPassword);
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -171,14 +159,18 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Generate JWT token
+    // Generate token
     const token = generateToken(landlord._id);
     
     res.json({
       success: true,
       message: 'Login successful',
       token,
-      landlord
+      landlord: {
+        id: landlord._id,
+        email: landlord.email,
+        name: landlord.name
+      }
     });
     
   } catch (error) {
@@ -187,16 +179,21 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Get current landlord info (protected)
+// GET /api/auth/me - Get current user info (protected)
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    // req.landlord is added by authenticateToken middleware
+    const landlord = await Landlord.findById(req.landlord._id).select('-password');
+    if (!landlord) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
     res.json({
-      landlord: req.landlord
+      success: true,
+      landlord
     });
   } catch (error) {
-    console.error('Get current user error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Server error while fetching profile' });
   }
 });
 
