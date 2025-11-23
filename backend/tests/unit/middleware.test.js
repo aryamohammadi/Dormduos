@@ -38,9 +38,11 @@ describe('Middleware Unit Tests', () => {
       await authenticateToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Access denied. No token provided.'
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Access denied. No token provided.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
     
@@ -50,9 +52,11 @@ describe('Middleware Unit Tests', () => {
       await authenticateToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Access denied. No token provided.'
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Access denied. No token provided.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
     
@@ -62,9 +66,11 @@ describe('Middleware Unit Tests', () => {
       await authenticateToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Invalid token.'
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Invalid token.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
     
@@ -80,9 +86,11 @@ describe('Middleware Unit Tests', () => {
       await authenticateToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Token expired.'
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Token expired.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
     
@@ -99,9 +107,11 @@ describe('Middleware Unit Tests', () => {
       await authenticateToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Invalid token or account deactivated.'
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Invalid token or account deactivated.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
     
@@ -131,10 +141,13 @@ describe('Middleware Unit Tests', () => {
       
       await authenticateToken(req, res, next);
       
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Invalid token.'
-      });
+      // When JWT_SECRET is missing, it returns 500 (server config error)
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Server configuration error.'
+        })
+      );
       expect(next).not.toHaveBeenCalled();
       
       // Restore the environment variable

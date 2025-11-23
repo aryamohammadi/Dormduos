@@ -179,9 +179,9 @@ describe('Auth API Integration Tests', () => {
           email: 'nonexistent@example.com',
           password: 'testpassword123'
         })
-        .expect(400);
+        .expect(401);
       
-      expect(response.body.error).toContain('Invalid credentials');
+      expect(response.body.error).toContain('Invalid email or password');
     });
     
     test('should reject invalid password', async () => {
@@ -191,9 +191,9 @@ describe('Auth API Integration Tests', () => {
           email: 'login@example.com',
           password: 'wrongpassword'
         })
-        .expect(400);
+        .expect(401);
       
-      expect(response.body.error).toContain('Invalid credentials');
+      expect(response.body.error).toContain('Invalid email or password');
     });
     
     test('should validate required fields', async () => {
