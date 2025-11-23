@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ApiService from '../services/api'
 
 function AddListingForm({ onCancel, onSuccess }) {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -132,11 +132,22 @@ function AddListingForm({ onCancel, onSuccess }) {
         available_date: formData.available_date || undefined
       }
 
+      // Debug logging
+      console.log('📝 AddListingForm: Creating listing...')
+      console.log('🎫 Token present:', !!token)
+      console.log('🎫 Token preview:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN')
+
+      if (!token) {
+        setError('Not logged in. Please log in again.')
+        setLoading(false)
+        return
+      }
+
       // Make API call using ApiService instead of hardcoded localhost URL
       const result = await ApiService.request('/listings', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${user.token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(submitData)
       })

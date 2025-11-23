@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ApiService from '../services/api'
 
 function EditListingForm({ listing, onCancel, onSuccess }) {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   // Form data state - pre-populated with existing listing data
   const [formData, setFormData] = useState({
@@ -132,11 +132,21 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
         available_date: formData.available_date || undefined
       }
 
+      // Debug logging
+      console.log('📝 EditListingForm: Updating listing...')
+      console.log('🎫 Token present:', !!token)
+
+      if (!token) {
+        setError('Not logged in. Please log in again.')
+        setLoading(false)
+        return
+      }
+
       // Make API call to update the listing using ApiService instead of hardcoded localhost URL
       const result = await ApiService.request(`/listings/${listing._id}`, {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${user.token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(submitData)
       })
