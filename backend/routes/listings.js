@@ -140,11 +140,10 @@ router.get('/', async (req, res) => {
       message: error.message
     };
     
-    // Add more details in development
-    if (process.env.NODE_ENV === 'development') {
-      errorResponse.stack = error.stack;
-      errorResponse.details = error.toString();
-    }
+    // Always include error details for debugging (we can remove later)
+    errorResponse.stack = error.stack;
+    errorResponse.details = error.toString();
+    errorResponse.fullError = JSON.stringify(error, Object.getOwnPropertyNames(error));
     
     // Check if it's a database connection error
     if (error.name === 'MongoServerError' || error.message.includes('Mongo') || error.message.includes('buffering')) {
