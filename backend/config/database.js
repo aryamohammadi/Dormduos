@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Get MongoDB URI from environment variables
-    // Check for Railway's MONGO_URL first, then MONGODB_URI (for MongoDB Atlas)
+    // Priority: MONGO_URL (Railway internal, free) > MONGODB_URI (MongoDB Atlas)
+    // DO NOT use MONGO_PUBLIC_URL (external, incurs egress fees)
     const mongoURI = process.env.MONGO_URL || process.env.MONGODB_URI;
     
     if (!mongoURI) {
       console.error('❌ MongoDB connection string not found');
       console.error('Please set either MONGO_URL (Railway MongoDB) or MONGODB_URI (MongoDB Atlas)');
+      console.error('⚠️  Do NOT use MONGO_PUBLIC_URL (it incurs egress fees)');
       if (process.env.NODE_ENV === 'production') {
         // In production, we should exit if DB is not configured
         process.exit(1);
@@ -16,15 +18,22 @@ const connectDB = async () => {
       return;
     }
     
+    // Log which connection we're using (hide password)
+    const connectionType = process.env.MONGO_URL ? 'Railway Internal (MONGO_URL)' : 'MongoDB Atlas (MONGODB_URI)';
+    console.log(`🔌 Using ${connectionType}`);
+    
     console.log('🔌 Connecting to MongoDB...');
     console.log('MongoDB URI:', mongoURI.replace(/:[^:@]+@/, ':****@')); // Hide password in logs
     
     const conn = await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 30000, // Increased timeout for Railway
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
       maxPoolSize: 10,
       retryWrites: true,
-      w: 'majority'
+      w: 'majority',
+      // For Railway internal MongoDB
+      directConnection: mongoURI.includes('railway.internal')
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);

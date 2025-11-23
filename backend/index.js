@@ -10,13 +10,23 @@ dotenv.config();
 
 // Connect to database - wait for connection before starting server
 (async () => {
-  await connectDB();
-  
-  // Only start server if database is connected (or in dev mode)
-  if (mongoose.connection.readyState === 1 || process.env.NODE_ENV !== 'production') {
-    startServer();
-  } else {
-    console.error('❌ Cannot start server without database connection');
+  try {
+    await connectDB();
+    
+    // Wait a moment for connection to stabilize
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Only start server if database is connected
+    if (mongoose.connection.readyState === 1) {
+      console.log('✅ Database connected, starting server...');
+      startServer();
+    } else {
+      console.error('❌ Cannot start server without database connection');
+      console.error('Database ready state:', mongoose.connection.readyState);
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize application:', error);
     process.exit(1);
   }
 })();
