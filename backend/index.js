@@ -11,7 +11,7 @@ dotenv.config();
 // Connect to database - wait for connection before starting server
 (async () => {
   try {
-    console.log('🚀 Starting application initialization...');
+    console.log('Starting application initialization...');
     console.log('Environment variables check:');
     console.log('  NODE_ENV:', process.env.NODE_ENV || 'not set');
     console.log('  MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
@@ -38,12 +38,12 @@ dotenv.config();
     
     // Only start server if database is connected
     if (dbState === 1) {
-      console.log('✅ Database connected, starting server...');
-      console.log(`📊 Database: ${mongoose.connection.name || 'unknown'}`);
-      console.log(`🔗 Host: ${mongoose.connection.host || 'unknown'}`);
+      console.log('Database connected, starting server...');
+      console.log(`Database: ${mongoose.connection.name || 'unknown'}`);
+      console.log(`Host: ${mongoose.connection.host || 'unknown'}`);
       startServer();
     } else {
-      console.error('❌ Cannot start server without database connection');
+      console.error('Cannot start server without database connection');
       console.error('Database ready state:', dbState, `(${stateNames[dbState] || 'unknown'})`);
       console.error('Connection host:', mongoose.connection.host || 'none');
       console.error('Connection name:', mongoose.connection.name || 'none');
@@ -51,7 +51,7 @@ dotenv.config();
       process.exit(1);
     }
   } catch (error) {
-    console.error('❌ Failed to initialize application:', error);
+    console.error('Failed to initialize application:', error);
     console.error('Error stack:', error.stack);
     process.exit(1);
   }
@@ -114,7 +114,7 @@ app.use((req, res, next) => {
       req.headers['content-type'].includes('text/plain')) {
     // Change content-type to application/json so express.json() will parse it
     req.headers['content-type'] = 'application/json';
-    console.log('⚠️  Fixed Content-Type from text/plain to application/json');
+    console.log('Fixed Content-Type from text/plain to application/json');
   }
   next();
 });
@@ -131,7 +131,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Log incoming requests for debugging - AFTER body parsing
 app.use((req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-    console.log(`📥 ${req.method} ${req.path}`);
+    console.log(`${req.method} ${req.path}`);
     console.log('Content-Type:', req.headers['content-type']);
     console.log('Content-Length:', req.headers['content-length']);
     console.log('Body present:', !!req.body);
@@ -140,7 +140,7 @@ app.use((req, res, next) => {
     // Check if Content-Type is correct
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('application/json')) {
-      console.error('⚠️  WARNING: Content-Type is not application/json!');
+      console.error('WARNING: Content-Type is not application/json!');
       console.error('Received Content-Type:', contentType);
       console.error('Expected: application/json');
     }
@@ -149,7 +149,7 @@ app.use((req, res, next) => {
       console.log('Body keys:', Object.keys(req.body));
       console.log('Body sample:', JSON.stringify(req.body).substring(0, 200));
     } else {
-      console.error('⚠️  WARNING: req.body is undefined/null!');
+      console.error('WARNING: req.body is undefined/null!');
       console.error('Raw headers:', req.headers);
       console.error('Request URL:', req.url);
       console.error('Request path:', req.path);
@@ -191,7 +191,7 @@ app.use('/api/listings', require('./routes/listings'));
 
 // Basic error handler
 app.use((error, req, res, next) => {
-  console.error('❌ Unhandled server error:', error.message);
+  console.error('Unhandled server error:', error.message);
   console.error('Error name:', error.name);
   console.error('Error stack:', error.stack);
   
@@ -220,19 +220,19 @@ app.use((error, req, res, next) => {
   // Start server
   // Bind to 0.0.0.0 to accept connections from all network interfaces (required for Railway)
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔒 Allowed origins: ${allowedOrigins.join(', ')}`);
-    console.log(`💾 Database status: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected'}`);
-    console.log(`📡 Server is ready to accept connections`);
+    console.log(`Database status: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
+    console.log(`Server is ready to accept connections`);
   });
   
   // Handle server errors
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
-      console.error(`❌ Port ${PORT} is already in use`);
+      console.error(`Port ${PORT} is already in use`);
     } else {
-      console.error('❌ Server error:', error);
+      console.error('Server error:', error);
     }
     process.exit(1);
   });

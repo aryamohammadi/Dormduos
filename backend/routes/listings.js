@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
     const dbState = mongoose.connection.readyState;
     if (dbState !== 1) {
       const stateNames = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-      console.error('❌ Database not connected. Ready state:', dbState, `(${stateNames[dbState] || 'unknown'})`);
+      console.error('Database not connected. Ready state:', dbState, `(${stateNames[dbState] || 'unknown'})`);
       console.error('Connection host:', mongoose.connection.host || 'none');
       return res.status(503).json({ 
         error: 'Database temporarily unavailable. Please try again later.',
@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
       });
     }
     
-    console.log('✅ Database connected, proceeding with query...');
+    console.log('Database connected, proceeding with query...');
 
     const { 
       page = 1, 
@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     // Get listings and count
-    console.log('🔍 Querying listings with filter:', JSON.stringify(filter, null, 2));
+    console.log('Querying listings with filter:', JSON.stringify(filter, null, 2));
     
     let listings, totalCount;
     try {
@@ -99,9 +99,9 @@ router.get('/', async (req, res) => {
           .lean(), // Use lean() for better performance and to avoid Mongoose document issues
         Listing.countDocuments(filter)
       ]);
-      console.log(`✅ Found ${listings.length} listings, total count: ${totalCount}`);
+      console.log(`Found ${listings.length} listings, total count: ${totalCount}`);
     } catch (queryError) {
-      console.error('❌ Database query failed:', queryError.message);
+      console.error('Database query failed:', queryError.message);
       console.error('Query error stack:', queryError.stack);
       throw queryError;
     }
@@ -128,7 +128,7 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Get listings error:', error.message);
+    console.error('Get listings error:', error.message);
     console.error('Error name:', error.name);
     console.error('Error code:', error.code);
     console.error('Error stack:', error.stack);
@@ -147,7 +147,7 @@ router.get('/', async (req, res) => {
     
     // Check if it's a database connection error
     if (error.name === 'MongoServerError' || error.message.includes('Mongo') || error.message.includes('buffering')) {
-      console.error('❌ MongoDB connection error detected');
+      console.error('MongoDB connection error detected');
       errorResponse.error = 'Database connection error';
       errorResponse.suggestion = 'Check MongoDB connection and network access';
       return res.status(503).json(errorResponse);
@@ -155,7 +155,7 @@ router.get('/', async (req, res) => {
     
     // Check if it's a Mongoose error
     if (error.name === 'MongooseError' || error.name === 'CastError') {
-      console.error('❌ Mongoose error detected');
+      console.error('Mongoose error detected');
       errorResponse.error = 'Database query error';
       return res.status(500).json(errorResponse);
     }
@@ -227,7 +227,7 @@ router.post('/', authenticateToken, async (req, res) => {
     // CRITICAL: Check body BEFORE any destructuring to prevent errors
     // This is a safety check in case express.json() didn't parse the body
     if (req.body === undefined || req.body === null || Object.keys(req.body).length === 0) {
-      console.error('❌ CRITICAL: req.body is undefined/null/empty at route handler');
+      console.error('CRITICAL: req.body is undefined/null/empty at route handler');
       console.error('Request method:', req.method);
       console.error('Request path:', req.path);
       console.error('Request URL:', req.url);
@@ -250,16 +250,16 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    console.log('📝 Create listing request received');
-    console.log('📋 Request body type:', typeof req.body);
-    console.log('📋 Request body keys:', req.body ? Object.keys(req.body) : 'N/A');
-    console.log('📋 Request headers:', {
+    console.log('Create listing request received');
+    console.log('Request body type:', typeof req.body);
+    console.log('Request body keys:', req.body ? Object.keys(req.body) : 'N/A');
+    console.log('Request headers:', {
       'content-type': req.headers['content-type'],
       'content-length': req.headers['content-length']
     });
     
     if (typeof req.body !== 'object' || Array.isArray(req.body)) {
-      console.error('❌ req.body is not a plain object:', typeof req.body, Array.isArray(req.body));
+      console.error('req.body is not a plain object:', typeof req.body, Array.isArray(req.body));
       return res.status(400).json({ 
         error: 'Invalid request body format',
         debug: `req.body is ${typeof req.body}, expected plain object`,

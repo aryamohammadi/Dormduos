@@ -14,7 +14,7 @@ const bcrypt = require('bcryptjs');
 const MONGODB_URI = process.env.MONGO_URL || process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.error('❌ Set MONGODB_URI environment variable first');
+  console.error('Set MONGODB_URI environment variable first');
   process.exit(1);
 }
 
@@ -38,26 +38,26 @@ const listings = [
 (async () => {
   try {
     await mongoose.connect(finalURI, { serverSelectionTimeoutMS: 30000 });
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     let admin = await Landlord.findOne({ email: 'admin@test.com' });
     if (!admin) {
       admin = new Landlord({ email: 'admin@test.com', password: await bcrypt.hash('admin123', 12), name: 'Admin User', phone: '(555) 123-4567', isActive: true });
       await admin.save();
-      console.log('✅ Created admin@test.com');
+      console.log('Created admin@test.com');
     }
 
     await Listing.deleteMany({ contact_email: 'admin@test.com' });
-    console.log('✅ Cleared old listings');
+    console.log('Cleared old listings');
 
     for (const data of listings) {
       await new Listing({ ...data, landlord: admin._id, contact_email: 'admin@test.com', contact_phone: admin.phone, status: 'active' }).save();
     }
-    console.log(`✅ Created ${listings.length} listings!`);
+    console.log(`Created ${listings.length} listings!`);
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error.message);
     process.exit(1);
   }
 })();
