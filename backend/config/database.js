@@ -3,11 +3,12 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Get MongoDB URI from environment variables
-    const mongoURI = process.env.MONGODB_URI;
+    // Check for Railway's MONGO_URL first, then MONGODB_URI (for MongoDB Atlas)
+    const mongoURI = process.env.MONGO_URL || process.env.MONGODB_URI;
     
     if (!mongoURI) {
-      console.error('❌ MONGODB_URI environment variable is not set');
-      console.error('Please set MONGODB_URI in your Railway environment variables');
+      console.error('❌ MongoDB connection string not found');
+      console.error('Please set either MONGO_URL (Railway MongoDB) or MONGODB_URI (MongoDB Atlas)');
       if (process.env.NODE_ENV === 'production') {
         // In production, we should exit if DB is not configured
         process.exit(1);
