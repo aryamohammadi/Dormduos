@@ -346,8 +346,8 @@ describe('Middleware Unit Tests', () => {
       
       sanitizeInput(req, res, next);
       
-      expect(consoleSpy).toHaveBeenCalledWith('🛡️  Blocked dangerous MongoDB operator: $where');
-      expect(consoleSpy).toHaveBeenCalledWith('🛡️  Blocked dangerous MongoDB operator: $ne');
+      expect(consoleSpy).toHaveBeenCalledWith('Blocked dangerous MongoDB operator: $where');
+      expect(consoleSpy).toHaveBeenCalledWith('Blocked dangerous MongoDB operator: $ne');
       
       consoleSpy.mockRestore();
     });
