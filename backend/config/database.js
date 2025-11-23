@@ -25,16 +25,20 @@ const connectDB = async () => {
     console.log('🔌 Connecting to MongoDB...');
     console.log('MongoDB URI:', mongoURI.replace(/:[^:@]+@/, ':****@')); // Hide password in logs
     
-    const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 30000, // Increased timeout for Railway
+    // Simplified connection options
+    const connectOptions = {
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 30000,
-      maxPoolSize: 10,
-      retryWrites: true,
-      w: 'majority',
-      // For Railway internal MongoDB
-      directConnection: mongoURI.includes('railway.internal')
-    });
+      maxPoolSize: 10
+    };
+    
+    // Add database name if not in URI
+    let finalURI = mongoURI;
+    if (!mongoURI.includes('/ucrhousing') && !mongoURI.includes('?') && !mongoURI.endsWith('/')) {
+      finalURI = mongoURI.endsWith('/') ? mongoURI + 'ucrhousing' : mongoURI + '/ucrhousing';
+    }
+    
+    const conn = await mongoose.connect(finalURI, connectOptions);
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
@@ -55,7 +59,18 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
-    console.error('Error details:', error);
+    console.error('Error name:', error.name);
+    console.error('Error code:', error.code);
+    console.error('Full error:', JSON.stringify(error, null, 2));
+    
+    // Provide helpful error messages
+    if (error.message.includes('authentication failed') || error.message.includes('bad auth')) {
+      console.error('💡 Authentication failed - check username/password in connection string');
+    } else if (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo')) {
+      console.error('💡 DNS/Network error - check MongoDB Atlas Network Access (allow 0.0.0.0/0)');
+    } else if (error.message.includes('timeout')) {
+      console.error('💡 Connection timeout - check network access and firewall settings');
+    }
     
     // In production, exit if connection fails (Railway will restart)
     if (process.env.NODE_ENV === 'production') {
