@@ -23,21 +23,29 @@ const connectDB = async () => {
     console.log(`🔌 Using ${connectionType}`);
     
     console.log('🔌 Connecting to MongoDB...');
-    console.log('MongoDB URI:', mongoURI.replace(/:[^:@]+@/, ':****@')); // Hide password in logs
+    const maskedURI = mongoURI.replace(/:[^:@]+@/, ':****@');
+    console.log('MongoDB URI:', maskedURI);
+    console.log('URI length:', mongoURI.length);
+    console.log('URI starts with mongodb:', mongoURI.startsWith('mongodb'));
     
-    // Simplified connection options
+    // Simplified connection options with longer timeouts
     const connectOptions = {
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10
+      serverSelectionTimeoutMS: 30000, // 30 seconds to find server
+      socketTimeoutMS: 45000, // 45 seconds for socket operations
+      connectTimeoutMS: 30000, // 30 seconds to establish connection
+      maxPoolSize: 10,
+      bufferMaxEntries: 0, // Disable buffering - fail immediately if not connected
+      bufferCommands: false // Don't buffer commands
     };
     
-    // Add database name if not in URI
+    // Add database name if not in URI (for MongoDB Atlas)
     let finalURI = mongoURI;
-    if (!mongoURI.includes('/ucrhousing') && !mongoURI.includes('?') && !mongoURI.endsWith('/')) {
+    if (mongoURI.includes('mongodb+srv://') && !mongoURI.includes('/ucrhousing') && !mongoURI.includes('?') && !mongoURI.endsWith('/')) {
       finalURI = mongoURI.endsWith('/') ? mongoURI + 'ucrhousing' : mongoURI + '/ucrhousing';
+      console.log('Added database name to URI');
     }
     
+    console.log('Attempting connection with options:', JSON.stringify(connectOptions, null, 2));
     const conn = await mongoose.connect(finalURI, connectOptions);
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
@@ -61,7 +69,19 @@ const connectDB = async () => {
     console.error('❌ MongoDB connection failed:', error.message);
     console.error('Error name:', error.name);
     console.error('Error code:', error.code);
-    console.error('Full error:', JSON.stringify(error, null, 2));
+    console.error('Error stack:', error.stack);
+    
+    // Check what connection string we tried to use
+    const attemptedURI = process.env.MONGO_URL || process.env.MONGODB_URI;
+    if (attemptedURI) {
+      console.error('Attempted URI (masked):', attemptedURI.replace(/:[^:@]+@/, ':****@'));
+      console.error('URI exists:', !!attemptedURI);
+      console.error('URI length:', attemptedURI.length);
+    } else {
+      console.error('❌ NO CONNECTION STRING FOUND!');
+      console.error('MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
+      console.error('MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+    }
     
     // Provide helpful error messages
     if (error.message.includes('authentication failed') || error.message.includes('bad auth')) {
@@ -70,6 +90,8 @@ const connectDB = async () => {
       console.error('💡 DNS/Network error - check MongoDB Atlas Network Access (allow 0.0.0.0/0)');
     } else if (error.message.includes('timeout')) {
       console.error('💡 Connection timeout - check network access and firewall settings');
+    } else if (error.message.includes('buffering')) {
+      console.error('💡 Buffering timeout - MongoDB never connected. Check connection string and network access.');
     }
     
     // In production, exit if connection fails (Railway will restart)

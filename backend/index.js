@@ -11,22 +11,38 @@ dotenv.config();
 // Connect to database - wait for connection before starting server
 (async () => {
   try {
+    console.log('🚀 Starting application initialization...');
+    console.log('Environment variables check:');
+    console.log('  NODE_ENV:', process.env.NODE_ENV || 'not set');
+    console.log('  MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
+    console.log('  MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+    console.log('  JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+    
     await connectDB();
     
     // Wait a moment for connection to stabilize
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check connection state
+    const dbState = mongoose.connection.readyState;
+    const stateNames = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    console.log('Database ready state after connection attempt:', dbState, `(${stateNames[dbState] || 'unknown'})`);
     
     // Only start server if database is connected
-    if (mongoose.connection.readyState === 1) {
+    if (dbState === 1) {
       console.log('✅ Database connected, starting server...');
       startServer();
     } else {
       console.error('❌ Cannot start server without database connection');
-      console.error('Database ready state:', mongoose.connection.readyState);
+      console.error('Database ready state:', dbState, `(${stateNames[dbState] || 'unknown'})`);
+      console.error('Connection host:', mongoose.connection.host || 'none');
+      console.error('Connection name:', mongoose.connection.name || 'none');
+      console.error('Exiting - Railway will restart and retry');
       process.exit(1);
     }
   } catch (error) {
     console.error('❌ Failed to initialize application:', error);
+    console.error('Error stack:', error.stack);
     process.exit(1);
   }
 })();
