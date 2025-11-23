@@ -1,0 +1,3 @@
+# Ignore workspace to prevent Railway from trying to build the entire monorepo
+legacy-peer-deps=true
+

@@ -1,0 +1,7 @@
+# Ignore frontend and root files
+../frontend/
+../package.json
+../package-lock.json
+../README.md
+../.git/
+
