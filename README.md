@@ -1,4 +1,4 @@
-# UCR Housing Platform
+# Dormduos
 
 A full stack web application for managing student housing listings. The platform provides a RESTful API backend with authentication, CRUD operations, filtering, and pagination capabilities, paired with a React frontend for user interaction.
 
