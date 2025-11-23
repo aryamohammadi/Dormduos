@@ -106,42 +106,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// Custom middleware to handle text/plain requests that are actually JSON
+// This must come BEFORE express.json() so we can capture the raw body
+app.use((req, res, next) => {
+  if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') && 
+      req.headers['content-type'] && 
+      req.headers['content-type'].includes('text/plain')) {
+    // Change content-type to application/json so express.json() will parse it
+    req.headers['content-type'] = 'application/json';
+    console.log('⚠️  Fixed Content-Type from text/plain to application/json');
+  }
+  next();
+});
+
 // Parse JSON requests with increased limit for larger payloads
 // This MUST be before any routes that need req.body
-// Remove 'strict' option as it might be causing issues
 app.use(express.json({ 
-  limit: '10mb',
-  type: ['application/json', 'text/plain'] // Also parse text/plain as JSON (fallback for misconfigured clients)
+  limit: '10mb'
 }));
 
 // Also parse URL-encoded bodies (just in case)
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Fallback: Try to parse text/plain as JSON if body is still undefined
-app.use((req, res, next) => {
-  if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') && 
-      !req.body && 
-      req.headers['content-type'] && 
-      req.headers['content-type'].includes('text/plain') &&
-      req.headers['content-length'] && 
-      parseInt(req.headers['content-length']) > 0) {
-    let data = '';
-    req.on('data', chunk => {
-      data += chunk.toString();
-    });
-    req.on('end', () => {
-      try {
-        req.body = JSON.parse(data);
-        next();
-      } catch (e) {
-        console.error('Failed to parse text/plain as JSON:', e.message);
-        next();
-      }
-    });
-  } else {
-    next();
-  }
-});
 
 // Log incoming requests for debugging - AFTER body parsing
 app.use((req, res, next) => {
