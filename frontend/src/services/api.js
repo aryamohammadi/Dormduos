@@ -1,5 +1,24 @@
-// API base URL - switches between dev and production automatically 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-api-production-cc33.up.railway.app/api'
+// API base URL - switches between dev and production automatically
+// Priority: 1. VITE_API_URL env var, 2. Default to localhost for dev, 3. Fallback to production
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // In development mode (Vite default), use localhost
+  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
+    return 'http://localhost:3001/api'
+  }
+  
+  // Production fallback (only if explicitly in production mode)
+  return 'https://backend-api-production-cc33.up.railway.app/api'
+}
+
+const API_BASE_URL = getApiBaseUrl()
+
+// Log the API base URL on module load for debugging
+console.log('🔧 API Base URL configured:', API_BASE_URL)
 
 // API service class - basically handles all our HTTP requests so we don't repeat code
 class ApiService {
@@ -48,12 +67,28 @@ class ApiService {
     } catch (error) {
       // Network or CORS errors
       if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-        throw new Error('Unable to connect to our servers. Please check your internet connection and try again.')
+        console.error('❌ Network error:', {
+          url,
+          apiBaseUrl: API_BASE_URL,
+          error: error.message
+        })
+        
+        // Provide more helpful error message based on the API URL
+        if (API_BASE_URL.includes('localhost')) {
+          throw new Error('Unable to connect to local backend server. Make sure the backend is running on http://localhost:3001')
+        } else {
+          throw new Error(`Unable to connect to API server at ${API_BASE_URL}. Please check your internet connection and ensure the backend service is running.`)
+        }
       }
       
       // CORS errors (often show as network errors)
       if (error.message.includes('CORS') || error.message.includes('blocked')) {
-        throw new Error('Connection error. Please try refreshing the page.')
+        console.error('❌ CORS error:', {
+          url,
+          apiBaseUrl: API_BASE_URL,
+          error: error.message
+        })
+        throw new Error('Connection blocked by CORS policy. Please check backend CORS configuration.')
       }
       
       // Pass through our custom errors
