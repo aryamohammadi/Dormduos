@@ -3,7 +3,9 @@
 const getApiBaseUrl = () => {
   // If VITE_API_URL is explicitly set, use it
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
+    const url = import.meta.env.VITE_API_URL
+    // Ensure it ends with /api if not already
+    return url.endsWith('/api') ? url : url.endsWith('/') ? `${url}api` : `${url}/api`
   }
   
   // In development mode (Vite default), use localhost
@@ -17,6 +19,17 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl()
 
+// Validate API_BASE_URL is set correctly
+if (!API_BASE_URL || API_BASE_URL === '/api' || API_BASE_URL === 'undefined/api') {
+  console.error('❌ CRITICAL: API_BASE_URL is invalid:', API_BASE_URL)
+  console.error('Environment check:', {
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    DEV: import.meta.env.DEV,
+    MODE: import.meta.env.MODE,
+    PROD: import.meta.env.PROD
+  })
+}
+
 // Log the API base URL on module load for debugging
 console.log('🔧 API Base URL configured:', API_BASE_URL)
 
@@ -25,14 +38,30 @@ class ApiService {
   
   // Helper method to make HTTP requests - does the heavy lifting
   async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`
+    // Ensure endpoint starts with /
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    const url = `${API_BASE_URL}${normalizedEndpoint}`
+    
+    // Validate URL before making request
+    if (!url || url === '/api' || url.includes('undefined')) {
+      console.error('❌ Invalid API URL constructed:', url)
+      console.error('API_BASE_URL:', API_BASE_URL)
+      console.error('endpoint:', endpoint)
+      throw new Error('Invalid API configuration. Please check environment variables.')
+    }
     
     const config = {
+      method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
       ...options,
+    }
+    
+    // Ensure body is stringified if it's an object
+    if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
+      config.body = JSON.stringify(config.body)
     }
 
     try {
