@@ -226,18 +226,27 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     // CRITICAL: Check body BEFORE any destructuring to prevent errors
     // This is a safety check in case express.json() didn't parse the body
-    if (req.body === undefined || req.body === null) {
-      console.error('❌ CRITICAL: req.body is undefined/null at route handler');
+    if (req.body === undefined || req.body === null || Object.keys(req.body).length === 0) {
+      console.error('❌ CRITICAL: req.body is undefined/null/empty at route handler');
       console.error('Request method:', req.method);
       console.error('Request path:', req.path);
+      console.error('Request URL:', req.url);
       console.error('Content-Type header:', req.headers['content-type']);
       console.error('Content-Length header:', req.headers['content-length']);
-      console.error('All headers:', req.headers);
+      console.error('Raw body type:', typeof req.body);
+      console.error('Raw body:', req.body);
+      
+      // Try to read raw body if available
+      if (req.rawBody) {
+        console.error('Raw body available:', req.rawBody.substring(0, 200));
+      }
       
       return res.status(400).json({ 
         error: 'Invalid request body',
-        debug: 'req.body is undefined. The request body was not parsed. Check Content-Type header is exactly "application/json"',
-        version: '2.0'
+        debug: 'req.body is undefined or empty. The request body was not parsed. Ensure Content-Type header is "application/json" and body is valid JSON.',
+        version: '2.0',
+        contentType: req.headers['content-type'],
+        contentLength: req.headers['content-length']
       });
     }
     

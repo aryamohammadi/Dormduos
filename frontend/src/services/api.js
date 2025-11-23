@@ -50,12 +50,25 @@ class ApiService {
       throw new Error('Invalid API configuration. Please check environment variables.')
     }
     
+    // Build headers - ensure Content-Type is always application/json for JSON requests
+    const headers = {
+      ...options.headers,
+    }
+    
+    // Force Content-Type to application/json if we have a body (unless it's FormData)
+    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
+    } else if (options.body && typeof options.body === 'string') {
+      // If body is already a string, still set Content-Type to JSON
+      headers['Content-Type'] = 'application/json'
+    } else if (options.method && ['POST', 'PUT', 'PATCH'].includes(options.method)) {
+      // For POST/PUT/PATCH, always set Content-Type to JSON
+      headers['Content-Type'] = 'application/json'
+    }
+    
     const config = {
       method: options.method || 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     }
     
