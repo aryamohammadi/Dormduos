@@ -105,7 +105,9 @@ app.use('/api/listings', require('./routes/listings'));
 
 // Basic error handler
 app.use((error, req, res, next) => {
-  console.error('Server error:', error);
+  console.error('❌ Unhandled server error:', error.message);
+  console.error('Error name:', error.name);
+  console.error('Error stack:', error.stack);
   
   // Handle CORS errors specifically
   if (error.message === 'Not allowed by CORS') {
@@ -115,9 +117,18 @@ app.use((error, req, res, next) => {
     });
   }
   
-  res.status(500).json({ 
-    error: 'Internal server error'
-  });
+  const errorResponse = {
+    error: 'Internal server error',
+    errorType: error.name,
+    message: error.message
+  };
+  
+  // Add more details in development
+  if (process.env.NODE_ENV === 'development') {
+    errorResponse.stack = error.stack;
+  }
+  
+  res.status(500).json(errorResponse);
 });
 
   // Start server

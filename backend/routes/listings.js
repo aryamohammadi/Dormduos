@@ -17,12 +17,18 @@ const validateStringInput = (value, fieldName) => {
 router.get('/', async (req, res) => {
   try {
     // Check database connection
-    if (mongoose.connection.readyState !== 1) {
-      console.error('Database not connected. Ready state:', mongoose.connection.readyState);
+    const dbState = mongoose.connection.readyState;
+    if (dbState !== 1) {
+      const stateNames = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+      console.error('❌ Database not connected. Ready state:', dbState, `(${stateNames[dbState] || 'unknown'})`);
+      console.error('Connection host:', mongoose.connection.host || 'none');
       return res.status(503).json({ 
-        error: 'Database temporarily unavailable. Please try again later.'
+        error: 'Database temporarily unavailable. Please try again later.',
+        details: `Database state: ${stateNames[dbState] || 'unknown'}`
       });
     }
+    
+    console.log('✅ Database connected, proceeding with query...');
 
     const { 
       page = 1, 
@@ -75,20 +81,30 @@ router.get('/', async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     // Get listings and count
-    const [listings, totalCount] = await Promise.all([
-      Listing.find(filter)
-        .populate({
-          path: 'landlord',
-          select: 'name email',
-          // Handle missing landlord references gracefully
-          options: { lean: true }
-        })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(), // Use lean() for better performance and to avoid Mongoose document issues
-      Listing.countDocuments(filter)
-    ]);
+    console.log('🔍 Querying listings with filter:', JSON.stringify(filter, null, 2));
+    
+    let listings, totalCount;
+    try {
+      [listings, totalCount] = await Promise.all([
+        Listing.find(filter)
+          .populate({
+            path: 'landlord',
+            select: 'name email',
+            // Handle missing landlord references gracefully
+            options: { lean: true }
+          })
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(), // Use lean() for better performance and to avoid Mongoose document issues
+        Listing.countDocuments(filter)
+      ]);
+      console.log(`✅ Found ${listings.length} listings, total count: ${totalCount}`);
+    } catch (queryError) {
+      console.error('❌ Database query failed:', queryError.message);
+      console.error('Query error stack:', queryError.stack);
+      throw queryError;
+    }
 
     // Pagination info
     const totalPages = Math.ceil(totalCount / limitNum);
@@ -112,21 +128,40 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get listings error:', error);
+    console.error('❌ Get listings error:', error.message);
+    console.error('Error name:', error.name);
+    console.error('Error code:', error.code);
     console.error('Error stack:', error.stack);
     
-    // Check if it's a database connection error
-    if (error.name === 'MongoServerError' || error.message.includes('Mongo')) {
-      console.error('MongoDB connection error detected');
-      return res.status(503).json({ 
-        error: 'Database temporarily unavailable. Please try again later.'
-      });
+    // Provide detailed error information
+    const errorResponse = {
+      error: 'Server error while fetching listings',
+      errorType: error.name,
+      message: error.message
+    };
+    
+    // Add more details in development
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error.stack;
+      errorResponse.details = error.toString();
     }
     
-    res.status(500).json({ 
-      error: 'Server error while fetching listings',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    // Check if it's a database connection error
+    if (error.name === 'MongoServerError' || error.message.includes('Mongo') || error.message.includes('buffering')) {
+      console.error('❌ MongoDB connection error detected');
+      errorResponse.error = 'Database connection error';
+      errorResponse.suggestion = 'Check MongoDB connection and network access';
+      return res.status(503).json(errorResponse);
+    }
+    
+    // Check if it's a Mongoose error
+    if (error.name === 'MongooseError' || error.name === 'CastError') {
+      console.error('❌ Mongoose error detected');
+      errorResponse.error = 'Database query error';
+      return res.status(500).json(errorResponse);
+    }
+    
+    res.status(500).json(errorResponse);
   }
 });
 
