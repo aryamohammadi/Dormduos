@@ -55,9 +55,8 @@ const connectDB = async () => {
       maxPoolSize: 10
     };
     
-    // Disable Mongoose command buffering (fail fast if not connected)
-    // Note: bufferMaxEntries is not a valid option in newer Mongoose versions
-    mongoose.set('bufferCommands', false);
+    // Note: Removed bufferCommands and bufferMaxEntries as they're not valid in this Mongoose version
+    // The connection will work fine without them
     
     // Add database name if not in URI (for MongoDB Atlas)
     let finalURI = mongoURI;
