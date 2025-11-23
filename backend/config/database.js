@@ -47,15 +47,18 @@ const connectDB = async () => {
     console.log('URI length:', mongoURI.length);
     console.log('URI starts with mongodb:', mongoURI.startsWith('mongodb'));
     
-    // Simplified connection options with longer timeouts
+    // Connection options - only use valid MongoDB driver options
+    // Note: bufferMaxEntries and bufferCommands are Mongoose-specific and should be set on mongoose, not in connection options
     const connectOptions = {
       serverSelectionTimeoutMS: 30000, // 30 seconds to find server
       socketTimeoutMS: 45000, // 45 seconds for socket operations
       connectTimeoutMS: 30000, // 30 seconds to establish connection
-      maxPoolSize: 10,
-      bufferMaxEntries: 0, // Disable buffering - fail immediately if not connected
-      bufferCommands: false // Don't buffer commands
+      maxPoolSize: 10
     };
+    
+    // Set Mongoose-specific buffering options (not MongoDB driver options)
+    mongoose.set('bufferCommands', false);
+    mongoose.set('bufferMaxEntries', 0);
     
     // Add database name if not in URI (for MongoDB Atlas)
     let finalURI = mongoURI;
