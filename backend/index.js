@@ -98,10 +98,9 @@ app.use((req, res, next) => {
 
 // Parse JSON requests with increased limit for larger payloads
 // This MUST be before any routes that need req.body
+// Remove 'strict' option as it might be causing issues
 app.use(express.json({ 
-  limit: '10mb',
-  type: 'application/json',
-  strict: true
+  limit: '10mb'
 }));
 
 // Also parse URL-encoded bodies (just in case)

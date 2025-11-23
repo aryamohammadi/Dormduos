@@ -254,7 +254,8 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    // Now safe to destructure
+    // Now safe to destructure - use empty object as fallback
+    const body = req.body || {};
     const {
       title,
       description,
@@ -270,7 +271,7 @@ router.post('/', authenticateToken, async (req, res) => {
       contact_phone,
       parking_type,
       campus_proximity
-    } = req.body || {};
+    } = body;
 
     // Basic validation
     if (!title || !description || !price || bedrooms === undefined || bathrooms === undefined || !address) {
