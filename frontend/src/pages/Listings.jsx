@@ -244,7 +244,12 @@ function Listings() {
           {listings.map((listing) => (
             <div 
               key={listing._id} 
-              onClick={() => setSelectedListing(listing)}
+              onClick={(e) => {
+                // Only open detail if clicking on the card itself, not on interactive elements
+                if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A' && !e.target.closest('button') && !e.target.closest('a')) {
+                  setSelectedListing(listing);
+                }
+              }}
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group hover:-translate-y-1 cursor-pointer"
             >
               {/* Image */}
