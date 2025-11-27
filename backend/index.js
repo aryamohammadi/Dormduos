@@ -224,12 +224,12 @@ app.use((error, req, res, next) => {
   res.status(500).json(errorResponse);
 });
 
-  // Start server
+// Start server
   // Bind to 0.0.0.0 to accept connections from all network interfaces (required for Railway)
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
     console.log(`Database status: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
     console.log(`Server is ready to accept connections`);
   });
