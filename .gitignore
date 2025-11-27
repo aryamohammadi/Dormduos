@@ -74,3 +74,10 @@ env/
 # Old/unused directories (if they exist)
 src/
 tailwind.config.js
+# Performance testing files (local only)
+backend/routes/performance.js
+backend/middleware/latency.js
+backend/scripts/seed-large.js
+backend/scripts/benchmark-queries.js
+backend/scripts/remove-admin-listings.js
+backend/PERFORMANCE_TESTING.md
