@@ -1,4 +1,4 @@
-// API base URL - switches between dev and production automatically
+// API base URL - switches between dev and production automatically 
 // Priority: 1. VITE_API_URL env var, 2. Default to localhost for dev, 3. Fallback to production
 const getApiBaseUrl = () => {
   // If VITE_API_URL is explicitly set, use it

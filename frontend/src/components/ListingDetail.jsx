@@ -5,7 +5,7 @@ function ListingDetail({ listing, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-10 mx-auto p-6 border w-11/12 max-w-4xl shadow-2xl rounded-2xl bg-white">
+      <div className="relative top-10 mx-auto p-6 border w-11/12 max-w-4xl shadow-2xl rounded bg-white">
         <div className="flex justify-between items-start mb-6">
           <h2 className="text-3xl font-bold text-gray-900">{listing.title}</h2>
           <button
@@ -23,7 +23,7 @@ function ListingDetail({ listing, onClose }) {
           <div className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {listing.photos.map((photo, index) => (
-                <div key={index} className="relative h-64 rounded-lg overflow-hidden">
+                <div key={index} className="relative h-64 rounded overflow-hidden">
                   <img
                     src={photo}
                     alt={`${listing.title} - Photo ${index + 1}`}
@@ -37,7 +37,7 @@ function ListingDetail({ listing, onClose }) {
             </div>
           </div>
         ) : (
-          <div className="mb-6 h-64 bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+          <div className="mb-6 h-64 bg-slate-700 rounded flex items-center justify-center">
             <div className="text-white text-center">
               <svg className="w-16 h-16 mx-auto mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -217,7 +217,7 @@ function ListingDetail({ listing, onClose }) {
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-medium transition-colors"
           >
             Close
           </button>

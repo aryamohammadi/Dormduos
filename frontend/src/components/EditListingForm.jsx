@@ -237,7 +237,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded bg-white">
         <div className="mt-3">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
@@ -255,7 +255,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               {error}
             </div>
           )}
@@ -274,7 +274,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.title}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="e.g., Spacious 2BR Apartment Near UCR Campus"
                   required
                 />
@@ -291,7 +291,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   onChange={handleInputChange}
                   disabled={loading}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="Describe the property, nearby amenities, transportation, etc."
                   required
                 />
@@ -308,7 +308,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.address}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="Full address including city and ZIP code"
                   required
                 />
@@ -327,7 +327,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   disabled={loading}
                   min="0"
                   step="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="1200"
                   required
                 />
@@ -344,7 +344,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.distance_from_campus}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="e.g., 0.5 miles, 10 minute walk"
                 />
               </div>
@@ -362,7 +362,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   disabled={loading}
                   min="0"
                   max="10"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   required
                 />
               </div>
@@ -381,7 +381,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   min="0"
                   max="10"
                   step="0.5"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   required
                 />
               </div>
@@ -396,7 +396,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.parking_type}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                 >
                   <option value="none">No Parking</option>
                   <option value="street">Street Parking</option>
@@ -417,7 +417,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.available_date}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                 />
               </div>
 
@@ -432,7 +432,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.contact_email}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="Leave blank to use your account email"
                 />
               </div>
@@ -448,7 +448,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                   value={formData.contact_phone}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:bg-gray-100"
                   placeholder="(555) 123-4567"
                 />
               </div>
@@ -509,7 +509,7 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                       <img
                         src={photo}
                         alt={`Photo ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-md border border-gray-300"
+                        className="w-full h-24 object-cover rounded border border-gray-300"
                         onError={(e) => {
                           e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL'
                         }}
@@ -577,14 +577,14 @@ function EditListingForm({ listing, onCancel, onSuccess }) {
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+                className="px-6 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:bg-blue-300 flex items-center"
+                className="px-6 py-2 bg-slate-800 text-white rounded hover:bg-slate-900 font-medium disabled:bg-gray-400 flex items-center"
               >
                 {loading && (
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

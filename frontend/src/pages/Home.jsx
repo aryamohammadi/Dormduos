@@ -25,7 +25,7 @@ function Home() {
               </p>
               <a 
                 href="https://discord.gg/gqCQDXz4rg" 
-                target="_blank"
+                target="_blank" 
                 rel="noopener noreferrer"
                 className="inline-flex items-center bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
               >
@@ -38,7 +38,7 @@ function Home() {
 
             {/* Partnership Info */}
             <p className="text-sm text-gray-500 mb-8">
-              In partnership with <strong className="text-blue-600">HighlanderHousing</strong>
+              In partnership with <strong className="text-slate-800">HighlanderHousing</strong>
             </p>
             
             {/* Disclaimer */}
